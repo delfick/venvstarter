@@ -144,6 +144,10 @@ class Starter(object):
         folder = self.venv_folder
         if os.path.isfile(folder):
             folder = os.path.dirname(folder)
+
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+
         return os.path.abspath(os.path.join(folder, ".{0}".format(self.program)))
 
     @memoized_property
