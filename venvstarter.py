@@ -31,7 +31,7 @@ So your folder structure would look something like::
         harpoon.yml
 
 Slow Startup
-    There is only one disadvantage and that is this process adds about 0.6 seconds
+    There is only one disadvantage and that is this process adds about 0.4 seconds
     to your startup time for your application.
 
     The reason for this is because we have to shell out to the python in the
@@ -231,9 +231,9 @@ class Starter(object):
                 if ret != 0:
                     raise SystemExit(1)
 
-        ret = os.system("{0} -c '{1}'".format(self.venv_python, question))
-        if ret != 0:
-            raise Exception("Couldn't install the requirements")
+            ret = os.system("{0} -c '{1}'".format(self.venv_python, question))
+            if ret != 0:
+                raise Exception("Couldn't install the requirements")
 
     def start_program(self, args):
         env = dict(os.environ)
