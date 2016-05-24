@@ -152,7 +152,10 @@ class Starter(object):
 
     @memoized_property
     def program_location(self):
-        return os.path.join(self.venv_location, "bin", self.program)
+        if os.environ.get("MANAGED_VIRTUALENV", None) != "1":
+            return os.path.join(self.venv_location, "bin", self.program)
+        else:
+            return subprocess.check_output(["which", self.program]).strip()
 
     @memoized_property
     def pip_location(self):
@@ -260,9 +263,12 @@ class Starter(object):
         if args is None:
             args = sys.argv[1:]
 
-        made = self.make_virtualenv()
-        if made or os.environ.get("VENV_STARTER_CHECK_DEPS", None) != "0":
-            self.install_deps()
+        if os.environ.get("MANAGED_VIRTUALENV", None) != "1":
+            made = self.make_virtualenv()
+
+            if made or os.environ.get("VENV_STARTER_CHECK_DEPS", None) != "0":
+                self.install_deps()
+
         self.start_program(args)
 
 def ignite(*args, **kwargs):
