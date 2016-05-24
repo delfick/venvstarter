@@ -218,6 +218,14 @@ class Starter(object):
             return True
 
     def install_deps(self):
+        deps = []
+        for dep in self.deps:
+            if "#" in dep:
+                deps.append(dict(arg.split('=', 1) for arg in dep.split("#", 1)[1].split("&"))["egg"])
+            else:
+                deps.append(dep)
+        deps = json.dumps(deps)
+
         question = dedent("""\
             import pkg_resources
             import sys
@@ -227,7 +235,7 @@ class Starter(object):
                 sys.stderr.write(str(error) + "\\n\\n")
                 sys.stderr.flush()
                 raise SystemExit(1)
-        """.format(json.dumps(list(str(dep) for dep in self.deps))))
+        """.format(deps))
 
         ret = os.system("{0} -c '{1}'".format(self.venv_python, question))
         if ret != 0:
