@@ -240,7 +240,7 @@ class Starter(object):
         ret = os.system("{0} -c '{1}'".format(self.venv_python, question))
         if ret != 0:
             with tempfile.NamedTemporaryFile(delete=True, dir=".") as reqs:
-                reqs.write("\n".join(str(dep) for dep in self.deps))
+                reqs.write("\n".join(str(dep) for dep in self.deps).encode('utf-8'))
                 reqs.flush()
                 ret = os.system("{0} install -r {1}".format(self.pip_location, reqs.name))
                 if ret != 0:
