@@ -9,6 +9,7 @@ setup(
       [ "pip"
       , "argparse"
       , "virtualenv"
+      , "pip-tools"
       ]
 
     # metadata for upload to PyPI

@@ -42,6 +42,7 @@ Slow Startup
     and then the delay goes down to about 0.2 seconds.
 """
 from distutils.version import StrictVersion
+from pip import main as pip_main
 from textwrap import dedent
 import pkg_resources
 import subprocess
@@ -162,6 +163,10 @@ class Starter(object):
         return os.path.join(self.venv_location, "bin", "pip")
 
     @memoized_property
+    def activate_location(self):
+        return os.path.join(self.venv_location, "bin", "activate")
+
+    @memoized_property
     def venv_python(self):
         return os.path.join(self.venv_location, "bin", "python")
 
@@ -242,9 +247,23 @@ class Starter(object):
             with tempfile.NamedTemporaryFile(delete=True, dir=".") as reqs:
                 reqs.write("\n".join(str(dep) for dep in self.deps).encode('utf-8'))
                 reqs.flush()
-                ret = os.system("{0} install -r {1}".format(self.pip_location, reqs.name))
-                if ret != 0:
-                    raise SystemExit(1)
+
+                with tempfile.NamedTemporaryFile(delete=True, dir=".") as tmp:
+                    ret = os.system("pip-compile {0} -o {1}".format(reqs.name, tmp.name))
+                    if ret != 0:
+                        raise SystemExit(1)
+
+                    for line in reversed(open(tmp.name).read().split("\n")):
+                        req = line.rsplit("#", 1)[0].strip()
+                        if req:
+                            cmd = "import sys; import shlex; sys.executable = '{0}'; main(shlex.split('install {1}'))".format(self.venv_python, line.split("#", 1)[0].strip())
+                            with tempfile.NamedTemporaryFile(delete=True, dir=".") as pipper:
+                                pipper.write("from pip import main\n{0}".format(cmd).encode())
+                                pipper.flush()
+                                ret = os.system(" ".join([self.venv_python, pipper.name]))
+                                if ret != 0:
+                                    raise SystemExit(1)
+                            print("---")
 
             ret = os.system("{0} -c '{1}'".format(self.venv_python, question))
             if ret != 0:
@@ -257,7 +276,7 @@ class Starter(object):
             env.update(dict((k, v.format(venv_parent=venv_parent)) for k, v in self.env.items()))
 
         try:
-            os.execve(self.program_location, [self.program_location] + args, env)
+            os.execve(self.venv_python, [self.venv_python, self.program_location] + args, env)
         except OSError:
             print("Sorry!!!! Couldn't find {0}".format(self.program_location))
             raise SystemExit(1)
