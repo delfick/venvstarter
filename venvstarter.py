@@ -248,22 +248,13 @@ class Starter(object):
                 reqs.write("\n".join(str(dep) for dep in self.deps).encode('utf-8'))
                 reqs.flush()
 
-                with tempfile.NamedTemporaryFile(delete=True, dir=".") as tmp:
-                    ret = os.system("pip-compile {0} -o {1}".format(reqs.name, tmp.name))
+                cmd = "import sys; import shlex; sys.executable = '{0}'; main(shlex.split('install -r {1}'))".format(self.venv_python, reqs.name)
+                with tempfile.NamedTemporaryFile(delete=True, dir=".") as pipper:
+                    pipper.write("from pip import main\n{0}".format(cmd).encode())
+                    pipper.flush()
+                    ret = os.system(" ".join([self.venv_python, pipper.name]))
                     if ret != 0:
                         raise SystemExit(1)
-
-                    for line in reversed(open(tmp.name).read().split("\n")):
-                        req = line.rsplit("#", 1)[0].strip()
-                        if req:
-                            cmd = "import sys; import shlex; sys.executable = '{0}'; main(shlex.split('install {1}'))".format(self.venv_python, line.split("#", 1)[0].strip())
-                            with tempfile.NamedTemporaryFile(delete=True, dir=".") as pipper:
-                                pipper.write("from pip import main\n{0}".format(cmd).encode())
-                                pipper.flush()
-                                ret = os.system(" ".join([self.venv_python, pipper.name]))
-                                if ret != 0:
-                                    raise SystemExit(1)
-                            print("---")
 
             ret = os.system("{0} -c '{1}'".format(self.venv_python, question))
             if ret != 0:
