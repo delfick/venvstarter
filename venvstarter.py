@@ -266,6 +266,10 @@ class Starter(object):
         if self.env is not None:
             env.update(dict((k, v.format(venv_parent=venv_parent)) for k, v in self.env.items()))
 
+        # Fix a bug whereby the virtualenv has the wrong sys.executable
+        if "__PYVENV_LAUNCHER__" in env:
+            del env["__PYVENV_LAUNCHER__"]
+
         try:
             os.execve(self.venv_python, [self.venv_python, self.program_location] + args, env)
         except OSError:
