@@ -42,7 +42,6 @@ Slow Startup
     and then the delay goes down to about 0.2 seconds.
 """
 from distutils.version import StrictVersion
-from pip import main as pip_main
 from textwrap import dedent
 import pkg_resources
 import subprocess
@@ -171,6 +170,10 @@ class Starter(object):
         return os.path.join(self.venv_location, "bin", "python")
 
     @memoized_property
+    def venv_pip(self):
+        return os.path.join(self.venv_location, "bin", "pip")
+
+    @memoized_property
     def python_location(self):
         def suitable(version):
             if version == self.min_python:
@@ -231,32 +234,39 @@ class Starter(object):
                 deps.append(dep)
         deps = json.dumps(deps)
 
-        question = dedent("""\
-            import pkg_resources
-            import sys
-            try:
-                pkg_resources.working_set.require({0})
-            except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict) as error:
-                sys.stderr.write(str(error) + "\\n\\n")
-                sys.stderr.flush()
-                raise SystemExit(1)
-        """.format(deps))
+        # Fix a bug whereby the virtualenv has the wrong sys.executable
+        env = dict(os.environ)
+        if "__PYVENV_LAUNCHER__" in env:
+            del env["__PYVENV_LAUNCHER__"]
 
-        ret = os.system("{0} -c '{1}'".format(self.venv_python, question))
+        def check_deps():
+            question = dedent("""\
+                import pkg_resources
+                import sys
+                try:
+                    pkg_resources.working_set.require({0})
+                except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict) as error:
+                    sys.stderr.write(str(error) + "\\n\\n")
+                    sys.stderr.flush()
+                    raise SystemExit(1)
+            """.format(deps))
+
+            cmd = "{0} -c '{1}'".format(self.venv_python, question)
+            return subprocess.call(shlex.split(cmd), env=env)
+
+        ret = check_deps()
         if ret != 0:
             with tempfile.NamedTemporaryFile(delete=True, dir=".") as reqs:
                 reqs.write("\n".join(str(dep) for dep in self.deps).encode('utf-8'))
                 reqs.flush()
 
-                cmd = "import sys; import shlex; sys.executable = '{0}'; main(shlex.split('install -r {1}'))".format(self.venv_python, reqs.name)
-                with tempfile.NamedTemporaryFile(delete=True, dir=".") as pipper:
-                    pipper.write("from pip import main\n{0}".format(cmd).encode())
-                    pipper.flush()
-                    ret = os.system(" ".join([self.venv_python, pipper.name]))
-                    if ret != 0:
-                        raise SystemExit(1)
+                cmd = "{0} install -r {1}".format(self.venv_pip, reqs.name)
+                ret = subprocess.call(shlex.split(cmd), env=env)
 
-            ret = os.system("{0} -c '{1}'".format(self.venv_python, question))
+                if ret != 0:
+                    raise SystemExit(1)
+
+            ret = check_deps()
             if ret != 0:
                 raise Exception("Couldn't install the requirements")
 
