@@ -31,3 +31,11 @@ Api
 
 .. autofunction:: venvstarter.ignite
 
+Changelog
+---------
+
+0.7
+    * Fix so that this continues to work with newer versions of pip
+
+Pre 0.7
+    No changelog was kept
