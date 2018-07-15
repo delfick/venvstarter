@@ -34,6 +34,12 @@ Api
 Changelog
 ---------
 
+0.8
+    * Fix to the python version checks
+
+      * Version checks no longer fail because of using bytes like a str
+      * Changed the check order so pythonx is checked before pythonx.y is checked
+
 0.7
     * Fix so that this continues to work with newer versions of pip
 

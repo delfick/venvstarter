@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
       name = "venvstarter"
-    , version = "0.7"
+    , version = "0.8"
     , py_modules = ['venvstarter']
 
     , install_requires =

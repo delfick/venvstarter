@@ -194,12 +194,13 @@ class Starter(object):
             return this_python
 
         question = """{0} -c 'import sys, json; print(json.dumps(list(sys.version_info)))'"""
-        version_info = lambda exe: subprocess.check_output(shlex.split(question.format(exe))).strip()
+        version_info = lambda exe: subprocess.check_output(shlex.split(question.format(exe))).strip().decode()
         version_question = lambda exe: StrictVersion("{0}.{1}.{2}".format(*json.loads(version_info(exe))))
 
         def is_suitable_python(location):
             try:
-                found_python = subprocess.check_output(["which", location])
+                # I would use shutil.which but I still want to support python2
+                found_python = subprocess.check_output(["which", location]).strip().decode()
             except subprocess.CalledProcessError:
                 return None
 
@@ -210,10 +211,10 @@ class Starter(object):
         ret = is_suitable_python("python")
         if ret: return ret
 
-        ret = is_suitable_python("python{0}.{1}".format(*self.min_python.version))
+        ret = is_suitable_python("python{0}".format(*self.min_python.version))
         if ret: return ret
 
-        ret = is_suitable_python("python{0}".format(*self.min_python.version))
+        ret = is_suitable_python("python{0}.{1}".format(*self.min_python.version))
         if ret: return ret
 
         raise Exception("Couldn't find a suitable python!")
