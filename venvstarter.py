@@ -4,21 +4,17 @@ dependencies you may have are in that virtualenv before starting the program.
 
 Essentially you create a bootstrap script using this program, something like::
 
-    #!/usr/bin/env python
-    __requires__ = ["venvstarter"]
-    import pkg_resources
+    #!/usr/bin/env python3
 
     from venvstarter import ignite
     ignite(__file__, "harpoon"
-        , deps = ["docker-harpoon==0.6.8.3"]
+        , deps = ["docker-harpoon==0.12.1"]
         , env = {"HARPOON_CONFIG": "{venv_parent}/harpoon.yml"}
         )
 
-The __requires__ at the top is so that pkg_resources can tell you if
-``venvstarter`` is not installed, and then we import ``venvstarter.ignite`` and
-use that to run the ``harpoon`` program after first ensuring we have a virtualenv
-called ``.harpoon`` in the same folder as this bootstrap script along with
-the correct version of harpoon.
+First we import ``venvstarter.ignite`` and use that to run the ``harpoon``
+program after first ensuring we have a virtualenv called ``.harpoon`` in the
+same folder as this bootstrap script along with the correct version of harpoon.
 
 As a bonus we can also set environment variables that have ``venv_parent``
 formatted into them which is the folder that the virtualenv sits in.
@@ -35,11 +31,13 @@ Slow Startup
     to your startup time for your application.
 
     The reason for this is because we have to shell out to the python in the
-    virtualenv to work out if we need to update any of the dependencies.
+    virtualenv to work out if we need to update any of the dependencies. And the
+    way I determine if packages has changed relies on importing pkg_resources,
+    which is very slow.
 
     If you want to skip checking the versions of your dependencies, then set
     VENV_STARTER_CHECK_DEPS=0 in your environment before starting the bootstrap
-    and then the delay goes down to about 0.2 seconds.
+    and then the delay goes down to about 0.1 seconds.
 """
 from distutils.version import StrictVersion
 from textwrap import dedent
@@ -91,14 +89,14 @@ class Starter(object):
         is the folder the virtualenv sits in.
 
     min_python_version
-        Either a string or a pkg_resources.StrictVersion instance representing
-        the minimum version of python needed for the virtualenv.
+        Either a string or a distutils.version.StrictVersion instance
+        representing the minimum version of python needed for the virtualenv.
 
         This will always default to 3.5.
 
     max_python_version
-        An optional string or a pkg_resources.StrictVersion instance representing
-        the maximum version of python needed for the virtualenv.
+        An optional string or a distutils.version.StrictVersion instance
+        representing the maximum version of python needed for the virtualenv.
 
         This must be a version equal to or greater than min_python_version.
 
