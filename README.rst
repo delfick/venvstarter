@@ -36,6 +36,7 @@ Changelog
 
 0.8.1
     * Don't need to import pkg_resources when venvstarter is imported
+    * Don't need pip as a dependency anymore
 
 0.8
     * Fix to the python version checks

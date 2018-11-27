@@ -45,7 +45,6 @@ import subprocess
 import tempfile
 import shlex
 import json
-import pip
 import sys
 import os
 

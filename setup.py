@@ -6,8 +6,7 @@ setup(
     , py_modules = ['venvstarter']
 
     , install_requires =
-      [ "pip"
-      , "virtualenv"
+      [ "virtualenv"
       ]
 
     # metadata for upload to PyPI
