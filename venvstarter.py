@@ -43,7 +43,6 @@ Slow Startup
 """
 from distutils.version import StrictVersion
 from textwrap import dedent
-import pkg_resources
 import subprocess
 import tempfile
 import shlex
