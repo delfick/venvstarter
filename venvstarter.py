@@ -48,8 +48,10 @@ import json
 import sys
 import os
 
+
 class memoized_property(object):
     """Just to make sure we don't call os.path things more often than we need to"""
+
     def __init__(self, func):
         self.func = func
         self.key = ".{0}".format(self.func.__name__)
@@ -60,6 +62,7 @@ class memoized_property(object):
             obj = self.func(instance)
             setattr(instance, self.key, obj)
         return obj
+
 
 class Starter(object):
     """
@@ -106,7 +109,16 @@ class Starter(object):
     .. note:: you may pass a custom args array into ``ignite`` and it will use
       that instead of sys.argv
     """
-    def __init__(self, venv_folder, program, deps=None, env=None, min_python_version=3.5, max_python_version=None):
+
+    def __init__(
+        self,
+        venv_folder,
+        program,
+        deps=None,
+        env=None,
+        min_python_version=3.5,
+        max_python_version=None,
+    ):
         self.env = env
         self.deps = deps
         self.program = program
@@ -190,8 +202,12 @@ class Starter(object):
             return this_python
 
         question = """{0} -c 'import sys, json; print(json.dumps(list(sys.version_info)))'"""
-        version_info = lambda exe: subprocess.check_output(shlex.split(question.format(exe))).strip().decode()
-        version_question = lambda exe: StrictVersion("{0}.{1}.{2}".format(*json.loads(version_info(exe))))
+        version_info = (
+            lambda exe: subprocess.check_output(shlex.split(question.format(exe))).strip().decode()
+        )
+        version_question = lambda exe: StrictVersion(
+            "{0}.{1}.{2}".format(*json.loads(version_info(exe)))
+        )
 
         def is_suitable_python(location):
             try:
@@ -205,19 +221,24 @@ class Starter(object):
                 return found_python
 
         ret = is_suitable_python("python")
-        if ret: return ret
+        if ret:
+            return ret
 
         ret = is_suitable_python("python{0}".format(*self.min_python.version))
-        if ret: return ret
+        if ret:
+            return ret
 
         ret = is_suitable_python("python{0}.{1}".format(*self.min_python.version))
-        if ret: return ret
+        if ret:
+            return ret
 
         raise Exception("Couldn't find a suitable python!")
 
     def make_virtualenv(self):
         if not os.path.exists(self.venv_location):
-            res = os.system("virtualenv {0} -p {1}".format(self.venv_location, self.python_location))
+            res = os.system(
+                "virtualenv {0} -p {1}".format(self.venv_location, self.python_location)
+            )
             if res != 0:
                 raise Exception("Failed to make the virtualenv!")
             return True
@@ -226,7 +247,9 @@ class Starter(object):
         deps = []
         for dep in self.deps:
             if "#" in dep:
-                deps.append(dict(arg.split('=', 1) for arg in dep.split("#", 1)[1].split("&"))["egg"])
+                deps.append(
+                    dict(arg.split("=", 1) for arg in dep.split("#", 1)[1].split("&"))["egg"]
+                )
             else:
                 deps.append(dep)
         deps = json.dumps(deps)
@@ -237,7 +260,8 @@ class Starter(object):
             del env["__PYVENV_LAUNCHER__"]
 
         def check_deps():
-            question = dedent("""\
+            question = dedent(
+                """\
                 import pkg_resources
                 import sys
                 try:
@@ -246,7 +270,10 @@ class Starter(object):
                     sys.stderr.write(str(error) + "\\n\\n")
                     sys.stderr.flush()
                     raise SystemExit(1)
-            """.format(deps))
+            """.format(
+                    deps
+                )
+            )
 
             cmd = "{0} -c '{1}'".format(self.venv_python, question)
             return subprocess.call(shlex.split(cmd), env=env)
@@ -254,7 +281,7 @@ class Starter(object):
         ret = check_deps()
         if ret != 0:
             with tempfile.NamedTemporaryFile(delete=True, dir=".") as reqs:
-                reqs.write("\n".join(str(dep) for dep in self.deps).encode('utf-8'))
+                reqs.write("\n".join(str(dep) for dep in self.deps).encode("utf-8"))
                 reqs.flush()
 
                 cmd = "{0} install -r {1}".format(self.venv_pip, reqs.name)
@@ -300,7 +327,7 @@ class Starter(object):
 
         self.start_program(args)
 
+
 def ignite(*args, **kwargs):
     """Convenience function to create a Starter instance and call ignite on it"""
     Starter(*args, **kwargs).ignite()
-
