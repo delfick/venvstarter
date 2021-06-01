@@ -1,6 +1,6 @@
 .. toctree::
     :hidden:
 
-.. _harpoon
+.. _venvstarter
 
-.. include:: ../../README.rst
+.. include:: ../README.rst

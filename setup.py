@@ -1,20 +1,20 @@
 from setuptools import setup
 
+# fmt: off
+
 setup(
       name = "venvstarter"
     , version = "0.8.1"
     , py_modules = ['venvstarter']
+    , python_requires = ">= 3.6"
 
-    , install_requires =
-      [ "virtualenv"
-      ]
+    , author = 'Stephen Moore'
+    , license = 'MIT'
+    , author_email = 'github@delfick.com'
 
-    # metadata for upload to PyPI
     , url = "https://github.com/delfick/venvstarter"
-    , author = "Stephen Moore"
-    , author_email = "delfick755@gmail.com"
-    , description = "Tool to create virtualenvs, manage versions of packages in it and use it start a particular program"
-    , license = "MIT"
-    , keywords = "docker"
+    , description = 'Tool to create virtualenvs, manage versions of packages in it and use it start a particular program'
+    , long_description = open("README.rst").read()
     )
 
+# fmt: on

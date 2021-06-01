@@ -1,4 +1,7 @@
 *.pyc
-*.egg-info
+__pycache__/
+*.egg-info/
+.tox/
+pip-wheel-metadata/
+build/
 dist/
-docs/sphinx/venv
