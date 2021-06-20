@@ -1,0 +1,91 @@
+---
+
+name: Tests on Windows
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Get pyenv
+        run: |
+          python3 -m pip install pyenv-win --target $HOME\\.pyenv
+
+      - name: Cache Python
+        id: python_cache
+        uses: actions/cache@v2
+        with:
+          key: python3.6.13_3.7.10_3.8.10_3.9.5
+          path: |
+            ~/.pyenv
+
+      - name: pyenv on PATH
+        shell: bash
+        run: |
+          echo "PYENV=$USERPROFILE\.pyenv\pyenv-win\\" >> $GITHUB_ENV
+          echo "PYENV_HOME=$USERPROFILE\.pyenv\pyenv-win\\" >> $GITHUB_ENV
+          echo "$USERPROFILE\.pyenv\pyenv-win\\bin\\" >> $GITHUB_PATH
+
+      - name: Install python versions
+        if: steps.python_cache.outputs.cache-hit != 'true'
+        shell: bash
+        run: |
+          set -e
+
+          pyenv --version
+
+          pyenv install 3.6.8
+          pyenv install 3.7.9
+          pyenv install 3.8.9
+          pyenv install 3.9.4
+
+          pyenv rehash
+
+      - name: Find python versions
+        shell: bash
+        run: |
+          set -e
+
+          ROOT=~/.pyenv
+          pyenv versions
+          V36=$(pyenv whence python3.6)
+          V37=$(pyenv whence python3.7)
+          V38=$(pyenv whence python3.8)
+          V39=$(pyenv whence python3.9)
+
+          cat <<EOF > pythons.json
+          {
+            "python3.6": "~/.pyenv/pyenv-win/versions/$V36/python.exe",
+            "python3.7": "~/.pyenv/pyenv-win/versions/$V37/python.exe",
+            "python3.8": "~/.pyenv/pyenv-win/versions/$V38/python.exe",
+            "python3.9": "~/.pyenv/pyenv-win/versions/$V39/python.exe"
+          }
+          EOF
+
+      - name: Found pythons
+        shell: bash
+        run: |
+          cat pythons.json
+
+      - name: Install venvstarter
+        shell: bash
+        run: |
+          python3 -m pip install -e ".[tests]"
+
+      - name: Run the tests
+        shell: bash
+        run: |
+          ./test.sh

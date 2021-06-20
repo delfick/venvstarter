@@ -1,3 +1,4 @@
+import subprocess
 import pytest
 import json
 import os
@@ -45,7 +46,24 @@ def pythons():
 
     for k in want:
         pythons[k] = os.path.expanduser(pythons[k])
+        if os.name == "nt":
+            pythons[k] = pythons[k].replace("/", "\\")
+
         if not os.path.isfile(pythons[k]):
             pytest.exit(f"Entry for {k} ({pythons[k]}) is not a file")
+
+        question = [pythons[k], "-c", "import sys, json; print(json.dumps(list(sys.version_info)))"]
+
+        try:
+            version_info = (
+                subprocess.check_output(question, stderr=subprocess.PIPE).strip().decode()
+            )
+        except subprocess.CalledProcessError as error:
+            stde = error.stderr.decode()
+            pytest.exit(f"Failed to call out to entry for {k}: {error}:\n{stde}")
+        else:
+            got = "python{0}.{1}".format(*json.loads(version_info))
+            if got != k:
+                pytest.exit(f"Entry for {k} is for a different version of python ({got})")
 
     return Pythons(pythons)

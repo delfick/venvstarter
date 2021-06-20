@@ -1,0 +1,84 @@
+---
+
+name: Tests on MacOS
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8, 3.9]
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Fix permissions for /opt so cache works
+        shell: bash
+        run: |
+          sudo chmod -R a+rwx /opt
+
+      - name: Get pyenv
+        uses: gabrielfalcao/pyenv-action@v8
+
+      - name: Cache Python
+        id: python_cache
+        uses: actions/cache@v2
+        with:
+          key: python3.6.13_3.7.10_3.8.10_3.9.5
+          path: |
+            /opt/hostedtoolcache/pyenv_root
+            ~/hostedtoolcache/pyenv_root
+
+      - name: Install python versions
+        if: steps.python_cache.outputs.cache-hit != 'true'
+        run: |
+          set -e
+
+          pyenv --version
+          pyenv install 3.6.13
+          pyenv install 3.7.10
+          pyenv install 3.8.10
+          pyenv install 3.9.5
+
+          pyenv rehash
+
+      - name: Find python versions
+        run: |
+          set -e
+
+          pyenv versions
+          V36=$(pyenv whence python3.6)
+          V37=$(pyenv whence python3.7)
+          V38=$(pyenv whence python3.8)
+          V39=$(pyenv whence python3.9)
+
+          ROOT=$(pyenv root)
+
+          cat <<eof > pythons.json
+          {
+            "python3.6": "$ROOT/versions/$V36/bin/python",
+            "python3.7": "$ROOT/versions/$V37/bin/python",
+            "python3.8": "$ROOT/versions/$V38/bin/python",
+            "python3.9": "$ROOT/versions/$V39/bin/python"
+          }
+          eof
+
+      - name: found pythons
+        run: |
+          cat pythons.json
+
+      - name: install venvstarter
+        run: |
+          python3 -m pip install -e ".[tests]"
+
+      - name: run the tests
+        run: |
+          ./test.sh
