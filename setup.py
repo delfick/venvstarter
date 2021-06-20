@@ -8,6 +8,14 @@ setup(
     , py_modules = ['venvstarter']
     , python_requires = ">= 3.6"
 
+    , extras_require =
+      { 'tests':
+        [ 'pytest'
+        , 'noseOfYeti==2.0.2'
+        , 'rainbow_logging_handler==2.2.2'
+        ]
+      }
+
     , author = 'Stephen Moore'
     , license = 'MIT'
     , author_email = 'github@delfick.com'
