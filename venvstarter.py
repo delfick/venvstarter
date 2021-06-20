@@ -2,60 +2,48 @@
 A program to manage your program in a virtualenv and ensure it and any other
 dependencies you may have are in that virtualenv before starting the program.
 
-Essentially you create a bootstrap script using this program, something like::
+It allows the creation of a shell script like the following::
 
     #!/usr/bin/env python3
 
-    from venvstarter import ignite
-    ignite(__file__, "harpoon"
-        , deps = ["docker-harpoon==0.12.1"]
-        , env = {"HARPOON_CONFIG": "{venv_parent}/harpoon.yml"}
-        )
+    (
+        __import__("venvstarter").manager
+        .named(".harpoon")
+        .add_pypi_deps("docker-harpoon==0.12.1")
+        .add_env(HARPOON_CONFIG="{venv_parent}/harpoon.yml")
+        .run("harpoon")
+    )
 
-First we import ``venvstarter.ignite`` and use that to run the ``harpoon``
-program after first ensuring we have a virtualenv called ``.harpoon`` in the
-same folder as this bootstrap script along with the correct version of harpoon.
+Such that running the script will ensure a Python virtualenv exists with the
+correct dependencies before running a particular program using that virtualenv
+with the rest of the arguments given on the command line.
 
-As a bonus we can also set environment variables that have ``venv_parent``
-formatted into them which is the folder that the virtualenv sits in.
-
-So your folder structure would look something like::
-
-    /project
-        bootstrap
-        .harpoon/
-        harpoon.yml
-
-Slow Startup
-    There is only one disadvantage and that is this process adds about 0.4 seconds
-    to your startup time for your application.
-
-    The reason for this is because we have to shell out to the python in the
-    virtualenv to work out if we need to update any of the dependencies. And the
-    way I determine if packages has changed relies on importing pkg_resources,
-    which is very slow.
+.. note::
+    A disadvantage of this system is that there is a small cost to starting
+    the script when it determines if the virtualenv has all the correct
+    versions of dependencies present.
 
     If you want to skip checking the versions of your dependencies, then set
-    VENV_STARTER_CHECK_DEPS=0 in your environment before starting the bootstrap
-    and then the delay goes down to about 0.1 seconds.
+    VENV_STARTER_CHECK_DEPS=0 in your environment.
 """
 from distutils.version import StrictVersion
 from textwrap import dedent
 import subprocess
 import tempfile
+import inspect
 import shutil
+import runpy
 import shlex
 import json
 import sys
 import os
+import re
 
 
 class memoized_property(object):
-    """Just to make sure we don't call os.path things more often than we need to"""
-
     def __init__(self, func):
         self.func = func
-        self.key = ".{0}".format(self.func.__name__)
+        self.key = f".{self.func.__name__}"
 
     def __get__(self, instance, owner):
         obj = getattr(instance, self.key, None)
@@ -85,8 +73,7 @@ class PythonFinder:
 
         return True
 
-    def version_for(self, name):
-        executable = shutil.which(name)
+    def version_for(self, executable):
         if executable is None:
             return None, None
 
@@ -134,8 +121,8 @@ class PythonFinder:
     def find(self):
         max_python = self.min_python
         if self.max_python is None:
-            _, max_python_1 = self.version_for("python3")
-            _, max_python_2 = self.version_for("python")
+            _, max_python_1 = self.version_for(shutil.which("python3"))
+            _, max_python_2 = self.version_for(shutil.which("python"))
             found = [
                 m for m in (max_python_1, max_python_2) if m is not None and m > self.min_python
             ]
@@ -149,7 +136,7 @@ class PythonFinder:
         tried = []
         for version in self.versions(max_python):
             tried.append(version)
-            executable, found = self.version_for(version)
+            executable, found = self.version_for(shutil.which(version))
             if self.suitable(found):
                 return executable
 
@@ -237,9 +224,23 @@ class Starter(object):
         self.min_python_version = min_python_version
         self.max_python_version = max_python_version
 
+        if self.deps is None:
+            self.deps = []
+
         if venv_folder_name is None:
-            venv_folder_name = f".{self.program}"
+            if not isinstance(program, str) or not re.match("([a-zA-Z]+(0-9)*)+", program):
+                venv_folder_name = ".venv"
+            else:
+                venv_folder_name = f".{self.program}"
         self.venv_folder_name = venv_folder_name
+
+        if self.min_python_version is None:
+            self.min_python_version = 3.0
+
+        if self.max_python is not None and not isinstance(self.max_python, StrictVersion):
+            self.max_python = StrictVersion(str(self.max_python))
+        if not isinstance(self.min_python, StrictVersion):
+            self.min_python = StrictVersion(str(self.min_python))
 
         if self.max_python is not None and self.min_python > self.max_python:
             raise Exception("min_python_version must be less than max_python_version")
@@ -287,8 +288,25 @@ class Starter(object):
         return self.venv_script("python")
 
     def make_virtualenv(self):
+        python_exe = None
+        if os.path.exists(self.venv_location):
+            finder = PythonFinder(self.min_python, self.max_python)
+            _, version_info = finder.version_for(self.venv_python)
+            if not finder.suitable(version_info):
+                # Make sure we can find a suitable python before we remove existing venv
+                try:
+                    finder.find()
+                except Exception as error:
+                    raise Exception(
+                        f"The current virtualenv has a python that's too old. But can't find a suitable replacement: {error}"
+                    )
+                else:
+                    shutil.rmtree(self.venv_location)
+
         if not os.path.exists(self.venv_location):
-            python_exe = PythonFinder(self.min_python, self.max_python).find()
+            if python_exe is None:
+                python_exe = PythonFinder(self.min_python, self.max_python).find()
+
             print("Creating virtualenv")
             print(f"Destination: {self.venv_location}")
             print(f"Using: {python_exe}")
@@ -410,6 +428,93 @@ class Starter(object):
         self.start_program(args)
 
 
+class NotSpecified:
+    pass
+
+
+class VenvManager:
+    def __init__(self):
+        self._env = {}
+        self._deps = []
+        self._max_python = None
+        self._min_python = None
+        self._venv_folder = NotSpecified
+        self._venv_folder_name = None
+
+    def place_venv_in(self, location):
+        self._venv_folder = location
+        return self
+
+    def min_python(self, version):
+        self._min_python = version
+        return self
+
+    def max_python(self, version):
+        self._max_python = version
+        return self
+
+    def named(self, name):
+        self._venv_folder_name = name
+        return self
+
+    def add_pypi_deps(self, *deps):
+        self._deps.extend(deps)
+        return self
+
+    def add_local_dep(self, *parts, version_file=None, with_tests=False, name):
+        home = os.path.expanduser("~")
+        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
+
+        path = os.path.join(*[part.format(here=here, home=home) for part in parts])
+
+        version = ""
+        if version_file is not None:
+            if isinstance(version_file, str):
+                version_file = [version_file]
+            version_file = os.path.join(path, *version_file)
+            version = runpy.run_path(version_file)["VERSION"]
+
+        name = name.format(version=version)
+        if with_tests:
+            groups = re.match("([^=><]+)(.*)", name).groups()
+            name = f"{groups[0]}[tests]{''.join(groups[1:])}"
+
+        self._deps.append(f"file://{path}#egg={name}")
+        return self
+
+    def add_env(self, **env):
+        self._env.update(env)
+        return self
+
+    def run(self, program=None):
+        if self._venv_folder is NotSpecified:
+            self._venv_folder = os.path.abspath(
+                os.path.dirname(inspect.currentframe().f_back.f_code.co_filename)
+            )
+
+        Starter(
+            self._venv_folder,
+            program,
+            env=self._env,
+            deps=self._deps,
+            venv_folder_name=self._venv_folder_name,
+            min_python_version=self._min_python,
+            max_python_version=self._max_python,
+        ).ignite()
+
+
+# An instance for use in single run scripts
+manager = VenvManager()
+
+
 def ignite(*args, **kwargs):
-    """Convenience function to create a Starter instance and call ignite on it"""
+    """
+    Convenience function to create a Starter instance and call ignite on it
+
+    This remains as a backwards compatibility to previous versions of
+    venvstarter
+    """
     Starter(*args, **kwargs).ignite()
+
+
+__all__ = ["ignite", "manager", "VenvManager", "PythonFinder", "Starter"]
