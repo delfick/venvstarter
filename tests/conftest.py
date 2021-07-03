@@ -1,6 +1,13 @@
+from distutils.version import StrictVersion
+from contextlib import contextmanager
+from textwrap import dedent
 import subprocess
+import tempfile
+import inspect
+import shutil
 import pytest
 import json
+import sys
 import os
 
 this_dir = os.path.dirname(__file__)
@@ -9,6 +16,10 @@ this_dir = os.path.dirname(__file__)
 class Pythons:
     def __init__(self, locations):
         self.locations = locations
+
+    def __iter__(self):
+        for key in sorted(self.locations):
+            yield float(key[len("python") :])
 
     def __getitem__(self, key):
         if not isinstance(key, float):
@@ -24,8 +35,7 @@ class Pythons:
         return self.locations[f"python{key:.1f}"]
 
 
-@pytest.fixture(autouse=True)
-def pythons():
+def find_pythons(print_output=False):
     location = os.path.join(this_dir, "..", "pythons.json")
     if not os.path.isfile(location):
         pytest.exit(
@@ -67,3 +77,95 @@ def pythons():
                 pytest.exit(f"Entry for {k} is for a different version of python ({got})")
 
     return Pythons(pythons)
+
+
+class PATH:
+    def __init__(self, pythons):
+        self.pythons = pythons
+
+    @contextmanager
+    def configure(self, *versions):
+        PATH = []
+        for version in versions:
+            PATH.append(os.path.dirname(self.pythons[version]))
+
+        class Empty:
+            pass
+
+        before = os.environ.get("PATH", Empty)
+        try:
+            os.environ["PATH"] = ":".join(PATH)
+            yield
+        finally:
+            if before is Empty:
+                if "PATH" in os.environ:
+                    del os.environ["PATH"]
+            else:
+                os.environ["PATH"] = before
+
+
+def assertPythonVersion(python_exe, version):
+    want = StrictVersion(version)
+
+    _, got = __import__("venvstarter").PythonFinder(3, 3).version_for(python_exe)
+    assert got is not None, python_exe
+
+    assert want.version[:2] == got.version[:2], (want, got)
+
+
+@contextmanager
+def make_script(func, args="", exe=None, prepare_venv=False):
+    script = dedent(inspect.getsource(func))
+
+    directory = None
+    try:
+        directory = tempfile.mkdtemp()
+        location = os.path.join(directory, "starter")
+
+        with open(location, "w") as fle:
+            fle.write(
+                "\n".join(
+                    [
+                        f"#!{exe or sys.executable}",
+                        "import sys",
+                        script,
+                        f"script({args})",
+                    ]
+                )
+            )
+
+        with open(location) as fle:
+            print(fle.read())
+            print("=" * 20)
+
+        os.chmod(location, 0o755)
+
+        if prepare_venv:
+            cmd = location
+            if os.name == "nt":
+                cmd = [exe, location]
+            subprocess.run(
+                cmd,
+                env={**os.environ, "VENVSTARTER_ONLY_MAKE_VENV": "1"},
+                shell=True,
+                check=True,
+            )
+
+        yield location
+    finally:
+        if directory and os.path.exists(directory):
+            shutil.rmtree(directory)
+
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "focus: mark test to run")
+
+    if not hasattr(pytest, "helpers"):
+        return
+
+    pythons = find_pythons()
+    pytest.helpers.register(make_script)
+    pytest.helpers.register(assertPythonVersion)
+
+    pytest.helpers._registry["PATH"] = PATH(pythons)
+    pytest.helpers._registry["pythons"] = pythons

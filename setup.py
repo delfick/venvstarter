@@ -12,7 +12,9 @@ setup(
       { 'tests':
         [ 'pytest'
         , 'noseOfYeti==2.0.2'
+        , "pytest-parallel==0.1.0"
         , 'rainbow_logging_handler==2.2.2'
+        , "pytest-helpers-namespace==2021.4.29"
         ]
       }
 
