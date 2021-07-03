@@ -393,6 +393,8 @@ class Starter(object):
             raise Exception(f"Not sure what to do with this program: {program}")
 
     def start_program(self, args):
+        if os.environ.get("VENVSTARTER_ONLY_MAKE_VENV") == "1":
+            return
         env = dict(os.environ)
         venv_parent = os.path.dirname(self.venv_location)
         if self.env is not None:
