@@ -10,7 +10,7 @@ describe "Finding the right version":
         def script():
             __import__("venvstarter").manager.run("python")
 
-        with pytest.helpers.PATH.configure(version):
+        with pytest.helpers.PATH.configure(version, python=3.9, python3=3.9):
             exe = pytest.helpers.pythons[version]
             with pytest.helpers.make_script(script, exe=exe, prepare_venv=True) as filename:
                 pytest.helpers.assertPythonVersion(filename, str(version))
@@ -23,7 +23,7 @@ describe "Finding the right version":
 
         for use in pytest.helpers.pythons:
             if use >= version:
-                with pytest.helpers.PATH.configure(use):
+                with pytest.helpers.PATH.configure(use, python3=use, python=use):
                     exe = pytest.helpers.pythons[use]
                     with pytest.helpers.make_script(
                         script, str(version), exe=exe, prepare_venv=True

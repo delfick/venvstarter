@@ -1,3 +1,4 @@
+from venvstarter import PythonHandler, FailedToGetOutput
 from distutils.version import StrictVersion
 from contextlib import contextmanager
 from textwrap import dedent
@@ -35,26 +36,31 @@ class Pythons:
         return self.locations[f"python{key:.1f}"]
 
 
-def find_pythons(made_venvs):
-    location = os.path.join(this_dir, "..", "pythons.json")
-    if not os.path.isfile(location):
-        pytest.exit(
-            "You must have a pythons.json in the root of your venvstarter that says where each python can be found"
-        )
-    with open(location) as fle:
-        pythons = json.load(fle)
+class PythonsFinder:
+    def __init__(self, made_venvs):
+        self.made_venvs = made_venvs
 
-    if not isinstance(pythons, dict):
-        pytest.exit(
-            'The pythons.json must be a dictionary of {"python3.6": <location>, "python3.7": <location>, ...}'
-        )
+    def pythons_json(self, want):
+        location = os.path.join(this_dir, "..", "pythons.json")
+        if not os.path.isfile(location):
+            pytest.exit(
+                "You must have a pythons.json in the root of your venvstarter that says where each python can be found"
+            )
+        with open(location) as fle:
+            pythons = json.load(fle)
 
-    want = set(["python3.6", "python3.7", "python3.8", "python3.9"])
-    missing = want - set(pythons)
-    if missing:
-        pytest.exit(f"Missing entries in pythons.json for {', '.join(missing)}")
+        if not isinstance(pythons, dict):
+            pytest.exit(
+                'The pythons.json must be a dictionary of {"python3.6": <location>, "python3.7": <location>, ...}'
+            )
 
-    for k in want:
+        missing = want - set(pythons)
+        if missing:
+            pytest.exit(f"Missing entries in pythons.json for {', '.join(missing)}")
+
+        return pythons
+
+    def normalise_python_location(self, pythons, k):
         location = os.path.expanduser(pythons[k])
         if os.name == "nt":
             location = location.replace("/", "\\")
@@ -62,64 +68,98 @@ def find_pythons(made_venvs):
         if not os.path.isfile(location):
             pytest.exit(f"Entry for {k} ({location}) is not a file")
 
-        question = [location, "-c", "import sys, json; print(json.dumps(list(sys.version_info)))"]
+        _, version_info = PythonHandler().version_for(location, raise_error=True)
+        assert version_info is not None
+        got = "python{0}.{1}".format(*version_info.version)
+        if got != k:
+            pytest.exit(f"Entry for {k} is for a different version of python ({got})")
+
+        return location
+
+    def make_venv(self, python_exe, version, errors):
+        venv_location = os.path.join(self.made_venvs, f"venv{version}")
+        if not os.path.exists(venv_location):
+            PythonHandler().run_command(
+                python_exe,
+                f"""
+                import json
+                import venv
+                venv.create({json.dumps(venv_location)}, with_pip=True)
+            """,
+            )
+
+        if os.name == "nt":
+            py = os.path.join(venv_location, "Scripts", "python.exe")
+        else:
+            py = os.path.join(venv_location, "bin", "python")
+
+        if not os.path.exists(py):
+            if errors:
+                if os.path.exists(venv_location):
+                    assert False, ("venv doesn't exist", venv_location)
+                else:
+                    assert False, ("Couldn't find python", os.listdir(venv_location))
+
+            if os.path.exists(venv_location):
+                shutil.rmtree(venv_location)
+
+            return
+
+        return venv_location, py
+
+    def ensure_venvstarter(self, python_exe):
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                PythonHandler().run_command(python_exe, "import venvstarter", cwd=tmpdir)
+        except FailedToGetOutput:
+            subprocess.run(
+                [python_exe, "-m", "pip", "install", os.path.join(this_dir, "..")],
+                check=True,
+            )
+
+    def ensure_venvstarter_version(self, python_exe, venv_location, errors):
 
         try:
-            version_info = (
-                subprocess.check_output(question, stderr=subprocess.PIPE).strip().decode()
-            )
-        except subprocess.CalledProcessError as error:
-            stde = error.stderr.decode()
-            pytest.exit(f"Failed to call out to entry for {k}: {error}:\n{stde}")
+            with tempfile.TemporaryDirectory() as tmpdir:
+                vsver = PythonHandler().get_output(
+                    python_exe, "import venvstarter; print(venvstarter.VERSION)", cwd=tmpdir
+                )
+        except FailedToGetOutput as error:
+            if errors:
+                pytest.exit(f"Failed to ensure venvstarter version is correct: {error}")
+
+            shutil.rmtree(venv_location)
+            return False
         else:
-            got = "python{0}.{1}".format(*json.loads(version_info))
-            if got != k:
-                pytest.exit(f"Entry for {k} is for a different version of python ({got})")
-
-        py = None
-        for i in range(2):
-            venv_location = os.path.join(made_venvs, f"venv{k}")
-            if not os.path.exists(venv_location):
-                subprocess.run([location, "-m", "venv", f"venv{k}"], cwd=made_venvs, check=True)
-
-            if os.name == "nt":
-                py = os.path.join(venv_location, "Scripts", "python")
-            else:
-                py = os.path.join(venv_location, "bin", "python")
-
-            if not os.path.exists(py):
-                shutil.rmtree(venv_location)
-                continue
-
-            question = [location, "-c", "import venvstarter"]
-            try:
-                subprocess.check_output(question, stderr=subprocess.PIPE).strip().decode()
-            except subprocess.CalledProcessError:
-                subprocess.run([py, "-m", "pip", "install", "-e", os.path.join(this_dir, "..")])
-
-            question = [location, "-c", "from venvstarter import VERSION; print(VERSION)"]
-
-            try:
-                vsver = subprocess.check_output(question, stderr=subprocess.PIPE).strip().decode()
-            except subprocess.CalledProcessError as error:
-                stde = error.stderr.decode()
-                if i == 0:
-                    shutil.rmtree(venv_location)
-                    continue
-                else:
-                    pytest.exit("Failed to ensure venvstarter version is correct")
-            else:
-                want = __import__("venvstarter").VERSION
-                if i == 0 and vsver != want:
-                    shutil.rmtree(venv_location)
-                    continue
-                else:
+            want = __import__("venvstarter").VERSION
+            if vsver != want:
+                if errors:
                     assert vsver == want
+                else:
+                    shutil.rmtree(venv_location)
+                    return False
 
-        assert py is not None and os.path.exists(py)
-        pythons[k] = py
+    def find(self):
+        want = set(["python3.6", "python3.7", "python3.8", "python3.9"])
+        pythons = self.pythons_json(want)
+        for k in want:
+            location = self.normalise_python_location(pythons, k)
 
-    return Pythons(pythons)
+            py = None
+            for errors in (False, True):
+                result = self.make_venv(location, k, errors)
+                if not result:
+                    continue
+
+                venv_location, py = result
+                self.ensure_venvstarter(py)
+                if not self.ensure_venvstarter_version(py, venv_location, errors):
+                    continue
+
+            assert py is not None and os.path.exists(py)
+            pythons[k] = py
+
+        return Pythons(pythons)
 
 
 class PATH:
@@ -127,19 +167,34 @@ class PATH:
         self.pythons = pythons
 
     @contextmanager
-    def configure(self, *versions):
-        PATH = []
-        for version in versions:
-            PATH.append(os.path.dirname(self.pythons[version]))
+    def configure(self, *versions, python3=None, python=False):
+        tmpdir = None
 
         class Empty:
             pass
 
         before = os.environ.get("PATH", Empty)
         try:
-            os.environ["PATH"] = ":".join(PATH)
+            tmpdir = tempfile.mkdtemp(
+                suffix=f'__INCLUDING__-{"_".join(str(v) for v in versions)}-python={python}'
+            )
+            for version in versions:
+                os.link(self.pythons[version], os.path.join(tmpdir, f"python{version}"))
+                if version == python3:
+                    os.link(self.pythons[version], os.path.join(tmpdir, "python3"))
+                if version == python:
+                    os.link(self.pythons[version], os.path.join(tmpdir, "python"))
+
+            if python3 is None:
+                os.link(sys.executable, os.path.join(tmpdir, "python3"))
+            if python is None:
+                os.link(sys.executable, os.path.join(tmpdir, "python"))
+
+            os.environ["PATH"] = tmpdir
             yield
         finally:
+            if tmpdir is not None and os.path.exists(tmpdir):
+                shutil.rmtree(tmpdir)
             if before is Empty:
                 if "PATH" in os.environ:
                     del os.environ["PATH"]
@@ -149,10 +204,7 @@ class PATH:
 
 def assertPythonVersion(python_exe, version):
     want = StrictVersion(version)
-
-    _, got = __import__("venvstarter").PythonFinder(3, 3).version_for(python_exe)
-    assert got is not None, python_exe
-
+    _, got = PythonHandler().version_for(python_exe, raise_error=True)
     assert want.version[:2] == got.version[:2], (want, got)
 
 
@@ -190,7 +242,6 @@ def make_script(func, args="", exe=None, prepare_venv=False):
             subprocess.run(
                 cmd,
                 env={**os.environ, "VENVSTARTER_ONLY_MAKE_VENV": "1"},
-                shell=True,
                 check=True,
             )
 
@@ -212,12 +263,14 @@ def pytest_configure(config):
     mv = None
     if "TEST_VENVS" in os.environ:
         mv = os.environ["TEST_VENVS"]
+        if not os.path.exists(mv):
+            os.makedirs(mv)
     else:
         global made_venvs
         made_venvs = tempfile.mkdtemp()
         mv = made_venvs
 
-    pythons = find_pythons(mv)
+    pythons = PythonsFinder(mv).find()
     pytest.helpers.register(make_script)
     pytest.helpers.register(assertPythonVersion)
 

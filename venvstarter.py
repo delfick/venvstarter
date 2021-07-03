@@ -42,6 +42,15 @@ import re
 VERSION = "0.8.1"
 
 
+class FailedToGetOutput(Exception):
+    def __init__(self, error, stderr):
+        self.error = error
+        self.stderr = stderr
+
+    def __str__(self):
+        return f"Failed to get output\nstderr: {self.stderr}\nerror: {self.error}"
+
+
 class memoized_property(object):
     def __init__(self, func):
         self.func = func
@@ -58,8 +67,8 @@ class memoized_property(object):
         setattr(instance, self.key, value)
 
 
-class PythonFinder:
-    def __init__(self, min_python, max_python):
+class PythonHandler:
+    def __init__(self, min_python=3, max_python=3):
         self.min_python = min_python
         self.max_python = max_python
 
@@ -75,22 +84,81 @@ class PythonFinder:
 
         return True
 
-    def version_for(self, executable):
+    def with_shebang(self, *cmd, only_for_windows=False):
+        if only_for_windows and os.name != "nt":
+            yield from cmd
+            return
+
+        if not cmd:
+            return
+
+        with open(cmd[0]) as fle:
+            try:
+                part = fle.read(2)
+            except UnicodeDecodeError:
+                part = ""
+
+            if part == "#!":
+                shb = fle.readline().strip()
+                if os.name == "nt":
+                    if " " in shb:
+                        if os.path.basename(shb.split(" ")[0]) == "env":
+                            shb = shb[shb.find(" ") + 1 :]
+                    yield shb
+                else:
+                    yield from shlex.split(shb)
+
+        yield from cmd
+
+    def get_output(self, python_exe, script, **kwargs):
+        return self.run_command(python_exe, script, get_output=True, **kwargs)
+
+    def run_command(self, python_exe, script, get_output=False, **kwargs):
+        fle = None
+        try:
+            fle = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False)
+            fle.write(dedent(script))
+            fle.close()
+
+            question = list(self.with_shebang(python_exe, fle.name, only_for_windows=True))
+            if get_output:
+                return (
+                    (subprocess.check_output(question, **{"stderr": subprocess.PIPE, **kwargs}))
+                    .strip()
+                    .decode()
+                )
+            else:
+                return subprocess.run(question, **{"check": True, **kwargs})
+        except subprocess.CalledProcessError as error:
+            stde = ""
+            if error.stderr:
+                stde = error.stderr.decode()
+            raise FailedToGetOutput(stde, error)
+        finally:
+            if fle is not None and os.path.exists(fle.name):
+                os.remove(fle.name)
+
+    def version_for(self, executable, raise_error=False):
         if executable is None:
             return None, None
 
-        question = [
-            executable,
-            "-c",
-            "import sys, json; print(json.dumps(list(sys.version_info)))",
-        ]
+        try:
+            version_info = self.get_output(
+                executable, 'print(__import__("json").dumps(list(__import__("sys").version_info)))'
+            )
+        except FailedToGetOutput:
+            if raise_error:
+                raise
+            return executable, None
 
         try:
-            version_info = subprocess.check_output(question).strip().decode()
-        except subprocess.CalledProcessError:
-            return executable, None
+            vers = "{0}.{1}.{2}".format(*json.loads(version_info))
+        except (TypeError, ValueError) as error:
+            raise Exception(
+                f"Failed to figure out python version\nLooking at:\n=====\n{version_info}\n=====\nError: {error}"
+            )
         else:
-            return executable, StrictVersion("{0}.{1}.{2}".format(*json.loads(version_info)))
+            return executable, StrictVersion(vers)
 
     def versions(self, starting):
         version = starting
@@ -120,7 +188,14 @@ class PythonFinder:
 
             version = StrictVersion(f"{version.version[0] - 1}")
 
+        yield "python"
+
     def find(self):
+        if self.max_python is None:
+            _, version = self.version_for(sys.executable)
+            if self.suitable(version):
+                return sys.executable
+
         max_python = self.min_python
         if self.max_python is None:
             _, max_python_1 = self.version_for(shutil.which("python3"))
@@ -234,6 +309,7 @@ class Starter(object):
                 venv_folder_name = ".venv"
             else:
                 venv_folder_name = f".{self.program}"
+
         self.venv_folder_name = venv_folder_name
 
         if self.min_python_version is None:
@@ -281,9 +357,27 @@ class Starter(object):
 
     def venv_script(self, name):
         if os.name == "nt":
-            return os.path.join(self.venv_location, "Scripts", name)
+            location = os.path.join(self.venv_location, "Scripts", name)
         else:
-            return os.path.join(self.venv_location, "bin", name)
+            location = os.path.join(self.venv_location, "bin", name)
+
+        if os.path.exists(location):
+            return location
+
+        if os.name == "nt":
+            exe = f"{location}.exe"
+            if os.path.exists(exe):
+                return exe
+
+        raise Exception(
+            "\n".join(
+                [
+                    "\nCouldn't find the executable!",
+                    f"Wanted {name}",
+                    f"Available is {os.listdir(os.path.dirname(location))}",
+                ]
+            )
+        )
 
     @memoized_property
     def venv_python(self):
@@ -292,7 +386,7 @@ class Starter(object):
     def make_virtualenv(self):
         python_exe = None
         if os.path.exists(self.venv_location):
-            finder = PythonFinder(self.min_python, self.max_python)
+            finder = PythonHandler(self.min_python, self.max_python)
             _, version_info = finder.version_for(self.venv_python)
             if not finder.suitable(version_info):
                 # Make sure we can find a suitable python before we remove existing venv
@@ -307,25 +401,21 @@ class Starter(object):
 
         if not os.path.exists(self.venv_location):
             if python_exe is None:
-                python_exe = PythonFinder(self.min_python, self.max_python).find()
+                python_exe = PythonHandler(self.min_python, self.max_python).find()
 
             print("Creating virtualenv")
             print(f"Destination: {self.venv_location}")
             print(f"Using: {python_exe}")
             print()
 
-            res = os.system(
-                " ".join(
-                    shlex.quote(s)
-                    for s in (
-                        python_exe,
-                        "-c",
-                        f'__import__("venv").create("{self.venv_location}", with_pip=True)',
-                    )
-                )
+            PythonHandler().run_command(
+                python_exe,
+                f"""
+            import venv
+            venv.create({json.dumps(self.venv_location)}, with_pip=True)
+            """,
             )
-            if res != 0:
-                raise Exception("Failed to make the virtualenv!")
+
             return True
 
     def install_deps(self):
@@ -345,8 +435,11 @@ class Starter(object):
             del env["__PYVENV_LAUNCHER__"]
 
         def check_deps():
-            question = dedent(
-                """\
+            return (
+                PythonHandler()
+                .run_command(
+                    self.venv_python,
+                    """
                 import pkg_resources
                 import sys
                 try:
@@ -356,11 +449,12 @@ class Starter(object):
                     sys.stderr.flush()
                     raise SystemExit(1)
             """.format(
-                    deps
+                        deps
+                    ),
+                    check=False,
                 )
+                .returncode
             )
-
-            return subprocess.call([self.venv_python, "-c", question])
 
         ret = check_deps()
         if ret != 0:
@@ -409,6 +503,11 @@ class Starter(object):
         cmd = self.determine_command()
         if not cmd:
             return
+
+        if os.name == "nt":
+            cmd = list(PythonHandler().with_shebang(*cmd, *args))
+            p = subprocess.run(cmd)
+            sys.exit(p.returncode)
 
         try:
             os.execve(cmd[0], cmd + args, env)
@@ -521,4 +620,4 @@ def ignite(*args, **kwargs):
     Starter(*args, **kwargs).ignite()
 
 
-__all__ = ["ignite", "manager", "VenvManager", "PythonFinder", "Starter"]
+__all__ = ["ignite", "manager", "VenvManager", "PythonHandler", "Starter", "FailedToGetOutput"]
