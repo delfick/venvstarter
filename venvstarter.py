@@ -39,6 +39,8 @@ import sys
 import os
 import re
 
+VERSION = "0.8.1"
+
 
 class memoized_property(object):
     def __init__(self, func):

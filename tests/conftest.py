@@ -35,7 +35,7 @@ class Pythons:
         return self.locations[f"python{key:.1f}"]
 
 
-def find_pythons(print_output=False):
+def find_pythons(made_venvs):
     location = os.path.join(this_dir, "..", "pythons.json")
     if not os.path.isfile(location):
         pytest.exit(
@@ -55,14 +55,14 @@ def find_pythons(print_output=False):
         pytest.exit(f"Missing entries in pythons.json for {', '.join(missing)}")
 
     for k in want:
-        pythons[k] = os.path.expanduser(pythons[k])
+        location = os.path.expanduser(pythons[k])
         if os.name == "nt":
-            pythons[k] = pythons[k].replace("/", "\\")
+            location = location.replace("/", "\\")
 
-        if not os.path.isfile(pythons[k]):
-            pytest.exit(f"Entry for {k} ({pythons[k]}) is not a file")
+        if not os.path.isfile(location):
+            pytest.exit(f"Entry for {k} ({location}) is not a file")
 
-        question = [pythons[k], "-c", "import sys, json; print(json.dumps(list(sys.version_info)))"]
+        question = [location, "-c", "import sys, json; print(json.dumps(list(sys.version_info)))"]
 
         try:
             version_info = (
@@ -75,6 +75,49 @@ def find_pythons(print_output=False):
             got = "python{0}.{1}".format(*json.loads(version_info))
             if got != k:
                 pytest.exit(f"Entry for {k} is for a different version of python ({got})")
+
+        py = None
+        for i in range(2):
+            venv_location = os.path.join(made_venvs, f"venv{k}")
+            if not os.path.exists(venv_location):
+                subprocess.run([location, "-m", "venv", f"venv{k}"], cwd=made_venvs, check=True)
+
+            if os.name == "nt":
+                py = os.path.join(venv_location, "Scripts", "python")
+            else:
+                py = os.path.join(venv_location, "bin", "python")
+
+            if not os.path.exists(py):
+                shutil.rmtree(venv_location)
+                continue
+
+            question = [location, "-c", "import venvstarter"]
+            try:
+                subprocess.check_output(question, stderr=subprocess.PIPE).strip().decode()
+            except subprocess.CalledProcessError:
+                subprocess.run([py, "-m", "pip", "install", "-e", os.path.join(this_dir, "..")])
+
+            question = [location, "-c", "from venvstarter import VERSION; print(VERSION)"]
+
+            try:
+                vsver = subprocess.check_output(question, stderr=subprocess.PIPE).strip().decode()
+            except subprocess.CalledProcessError as error:
+                stde = error.stderr.decode()
+                if i == 0:
+                    shutil.rmtree(venv_location)
+                    continue
+                else:
+                    pytest.exit("Failed to ensure venvstarter version is correct")
+            else:
+                want = __import__("venvstarter").VERSION
+                if i == 0 and vsver != want:
+                    shutil.rmtree(venv_location)
+                    continue
+                else:
+                    assert vsver == want
+
+        assert py is not None and os.path.exists(py)
+        pythons[k] = py
 
     return Pythons(pythons)
 
@@ -157,15 +200,31 @@ def make_script(func, args="", exe=None, prepare_venv=False):
             shutil.rmtree(directory)
 
 
+made_venvs = None
+
+
 def pytest_configure(config):
     config.addinivalue_line("markers", "focus: mark test to run")
 
     if not hasattr(pytest, "helpers"):
         return
 
-    pythons = find_pythons()
+    mv = None
+    if "TEST_VENVS" in os.environ:
+        mv = os.environ["TEST_VENVS"]
+    else:
+        global made_venvs
+        made_venvs = tempfile.mkdtemp()
+        mv = made_venvs
+
+    pythons = find_pythons(mv)
     pytest.helpers.register(make_script)
     pytest.helpers.register(assertPythonVersion)
 
     pytest.helpers._registry["PATH"] = PATH(pythons)
     pytest.helpers._registry["pythons"] = pythons
+
+
+def pytest_unconfigure(config):
+    if made_venvs and os.path.exists(made_venvs):
+        shutil.rmtree(made_venvs)

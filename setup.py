@@ -1,10 +1,12 @@
+from venvstarter import VERSION
+
 from setuptools import setup
 
 # fmt: off
 
 setup(
       name = "venvstarter"
-    , version = "0.8.1"
+    , version = VERSION
     , py_modules = ['venvstarter']
     , python_requires = ">= 3.6"
 
