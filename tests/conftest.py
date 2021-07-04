@@ -176,19 +176,23 @@ class PATH:
         before = os.environ.get("PATH", Empty)
         try:
             tmpdir = tempfile.mkdtemp(
-                suffix=f'__INCLUDING__-{"_".join(str(v) for v in versions)}-python={python}'
+                suffix=f'__INCLUDING__-{"_".join(str(v) for v in versions)}-python={python}-python3={python3}'
             )
+
+            def link(executable, *, end):
+                os.link(executable, os.path.join(tmpdir, f"python{end}"))
+
             for version in versions:
-                os.link(self.pythons[version], os.path.join(tmpdir, f"python{version}"))
+                link(self.pythons[version], end=str(version))
                 if version == python3:
-                    os.link(self.pythons[version], os.path.join(tmpdir, "python3"))
+                    link(self.pythons[version], end="3")
                 if version == python:
-                    os.link(self.pythons[version], os.path.join(tmpdir, "python"))
+                    link(self.pythons[version], end="")
 
             if python3 is None:
-                os.link(sys.executable, os.path.join(tmpdir, "python3"))
+                link(sys.executable, end="3")
             if python is None:
-                os.link(sys.executable, os.path.join(tmpdir, "python"))
+                link(sys.executable, end="")
 
             os.environ["PATH"] = tmpdir
             yield
@@ -238,7 +242,7 @@ def make_script(func, args="", exe=None, prepare_venv=False):
         if prepare_venv:
             cmd = location
             if os.name == "nt":
-                cmd = [exe, location]
+                cmd = [exe or sys.executable, location]
             subprocess.run(
                 cmd,
                 env={**os.environ, "VENVSTARTER_ONLY_MAKE_VENV": "1"},
@@ -251,11 +255,66 @@ def make_script(func, args="", exe=None, prepare_venv=False):
             shutil.rmtree(directory)
 
 
+class DirectoryCreator:
+    def __init__(self):
+        self.files = {}
+
+    def add(self, *path, content):
+        self.files[path] = content
+        if hasattr(self, "path"):
+            self.write(path, content)
+
+    def write(self, path, content):
+        location = os.path.join(self.path, *path)
+        parent = os.path.dirname(location)
+        if not os.path.exists(parent):
+            os.makedirs(parent)
+        with open(location, "w") as fle:
+            fle.write(dedent(content))
+
+    def __enter__(self):
+        if not hasattr(self, "path"):
+            self.path = tempfile.mkdtemp()
+        for path, content in self.files.items():
+            self.write(path, content)
+        return self
+
+    def __exit__(self, exc_typ, exc, tb):
+        if hasattr(self, "path") and os.path.exists(self.path):
+            shutil.rmtree(self.path)
+            del self.path
+
+    def output(self, venvstarter_script_filename, *args):
+        assert hasattr(self, "path")
+        try:
+            output = (
+                subprocess.check_output(
+                    list(PythonHandler().with_shebang(venvstarter_script_filename, *args)),
+                    stderr=subprocess.PIPE,
+                )
+                .strip()
+                .decode()
+            )
+        except subprocess.CalledProcessError as error:
+            stde = ""
+            if error.stderr:
+                stde = error.stderr.decode()
+            assert False, f"Failed to run command ({venvstarter_script_filename}, {args}): {stde}"
+        return output
+
+
 made_venvs = None
 
 
 def pytest_configure(config):
     config.addinivalue_line("markers", "focus: mark test to run")
+    config.addinivalue_line(
+        "markers",
+        "creation_tests: mark tests that are slow because they go over different versions of python",
+    )
+    config.addinivalue_line(
+        "markers", "usage_tests: mark tests that are slow because they install things"
+    )
 
     if not hasattr(pytest, "helpers"):
         return
@@ -272,6 +331,7 @@ def pytest_configure(config):
 
     pythons = PythonsFinder(mv).find()
     pytest.helpers.register(make_script)
+    pytest.helpers.register(DirectoryCreator, name="directory_creator")
     pytest.helpers.register(assertPythonVersion)
 
     pytest.helpers._registry["PATH"] = PATH(pythons)

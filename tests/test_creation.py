@@ -2,6 +2,8 @@
 
 import pytest
 
+pytestmark = pytest.mark.creation_tests
+
 describe "Finding the right version":
 
     @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])

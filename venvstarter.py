@@ -28,6 +28,7 @@ with the rest of the arguments given on the command line.
 """
 from distutils.version import StrictVersion
 from textwrap import dedent
+from pathlib import Path
 import subprocess
 import tempfile
 import inspect
@@ -49,6 +50,14 @@ class FailedToGetOutput(Exception):
 
     def __str__(self):
         return f"Failed to get output\nstderr: {self.stderr}\nerror: {self.error}"
+
+
+class VersionNotSpecified(Exception):
+    def __init__(self, name):
+        self.name = name
+
+    def __str__(self):
+        return f"A version_file was specified for a local dependency, but '{{version}}' not found in the name: {self.name}"
 
 
 class memoized_property(object):
@@ -412,7 +421,7 @@ class Starter(object):
                 python_exe,
                 f"""
             import venv
-            venv.create({json.dumps(self.venv_location)}, with_pip=True)
+            venv.create({json.dumps(self.venv_location)}, with_pip=True, symlinks=True)
             """,
             )
 
@@ -458,15 +467,23 @@ class Starter(object):
 
         ret = check_deps()
         if ret != 0:
-            with tempfile.NamedTemporaryFile(delete=True, dir=".") as reqs:
+            ret = 1
+            reqs = None
+            try:
+                reqs = tempfile.NamedTemporaryFile(
+                    delete=False, suffix="venvstarter_requirements", dir="."
+                )
                 reqs.write("\n".join(str(dep) for dep in self.deps).encode("utf-8"))
-                reqs.flush()
+                reqs.close()
 
                 cmd = [self.venv_python, "-m", "pip", "install", "-r", reqs.name]
                 ret = subprocess.call(cmd, env=env)
+            finally:
+                if reqs is not None and os.path.exists(reqs.name):
+                    os.remove(reqs.name)
 
-                if ret != 0:
-                    raise SystemExit(1)
+            if ret != 0:
+                raise SystemExit(1)
 
             ret = check_deps()
             if ret != 0:
@@ -564,7 +581,7 @@ class VenvManager:
         self._deps.extend(deps)
         return self
 
-    def add_local_dep(self, *parts, version_file=None, with_tests=False, name):
+    def add_local_dep(self, *parts, editable=True, version_file=None, with_tests=False, name):
         home = os.path.expanduser("~")
         here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
 
@@ -577,12 +594,20 @@ class VenvManager:
             version_file = os.path.join(path, *version_file)
             version = runpy.run_path(version_file)["VERSION"]
 
+            if "{version}" not in name:
+                raise VersionNotSpecified(name)
+
         name = name.format(version=version)
         if with_tests:
             groups = re.match("([^=><]+)(.*)", name).groups()
             name = f"{groups[0]}[tests]{''.join(groups[1:])}"
 
-        self._deps.append(f"file://{path}#egg={name}")
+        dep = f"{Path(path).resolve().absolute().as_uri()}#egg={name}"
+
+        if editable:
+            dep = f"-e {dep}"
+
+        self._deps.append(dep)
         return self
 
     def add_env(self, **env):
