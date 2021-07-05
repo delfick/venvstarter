@@ -2,6 +2,7 @@ from venvstarter import PythonHandler, FailedToGetOutput
 from distutils.version import StrictVersion
 from contextlib import contextmanager
 from textwrap import dedent
+from unittest import mock
 import subprocess
 import tempfile
 import inspect
@@ -167,7 +168,7 @@ class PATH:
         self.pythons = pythons
 
     @contextmanager
-    def configure(self, *versions, python3=None, python=False):
+    def configure(self, *versions, python3=None, python=False, mock_sys=False):
         tmpdir = None
 
         class Empty:
@@ -195,7 +196,12 @@ class PATH:
                 link(sys.executable, end="")
 
             os.environ["PATH"] = tmpdir
-            yield
+
+            if mock_sys is not False:
+                with mock.patch.object(sys, "executable", self.pythons[mock_sys]):
+                    yield
+            else:
+                yield
         finally:
             if tmpdir is not None and os.path.exists(tmpdir):
                 shutil.rmtree(tmpdir)
@@ -212,43 +218,45 @@ def assertPythonVersion(python_exe, version):
     assert want.version[:2] == got.version[:2], (want, got)
 
 
-@contextmanager
-def make_script(func, args="", exe=None, prepare_venv=False):
+def write_script(func, args="", *, filename, exe=None, prepare_venv=False):
     script = dedent(inspect.getsource(func))
 
+    with open(filename, "w") as fle:
+        fle.write(
+            "\n".join(
+                [
+                    f"#!{exe or sys.executable}",
+                    "import sys",
+                    script,
+                    f"script({args})",
+                ]
+            )
+        )
+
+    with open(filename) as fle:
+        print(fle.read())
+        print("=" * 20)
+
+    os.chmod(filename, 0o755)
+
+    if prepare_venv:
+        cmd = filename
+        if os.name == "nt":
+            cmd = [exe or sys.executable, filename]
+        subprocess.run(
+            cmd,
+            env={**os.environ, "VENVSTARTER_ONLY_MAKE_VENV": "1"},
+            check=True,
+        )
+
+
+@contextmanager
+def make_script(func, args="", exe=None, prepare_venv=False):
     directory = None
     try:
         directory = tempfile.mkdtemp()
         location = os.path.join(directory, "starter")
-
-        with open(location, "w") as fle:
-            fle.write(
-                "\n".join(
-                    [
-                        f"#!{exe or sys.executable}",
-                        "import sys",
-                        script,
-                        f"script({args})",
-                    ]
-                )
-            )
-
-        with open(location) as fle:
-            print(fle.read())
-            print("=" * 20)
-
-        os.chmod(location, 0o755)
-
-        if prepare_venv:
-            cmd = location
-            if os.name == "nt":
-                cmd = [exe or sys.executable, location]
-            subprocess.run(
-                cmd,
-                env={**os.environ, "VENVSTARTER_ONLY_MAKE_VENV": "1"},
-                check=True,
-            )
-
+        write_script(func, args=args, exe=exe, prepare_venv=prepare_venv, filename=location)
         yield location
     finally:
         if directory and os.path.exists(directory):
@@ -331,6 +339,7 @@ def pytest_configure(config):
 
     pythons = PythonsFinder(mv).find()
     pytest.helpers.register(make_script)
+    pytest.helpers.register(write_script)
     pytest.helpers.register(DirectoryCreator, name="directory_creator")
     pytest.helpers.register(assertPythonVersion)
 

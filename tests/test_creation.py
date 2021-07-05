@@ -31,3 +31,23 @@ describe "Finding the right version":
                         script, str(version), exe=exe, prepare_venv=True
                     ) as filename:
                         pytest.helpers.assertPythonVersion(filename, str(use))
+
+    it "can force the virtualenv to get a new version":
+
+        def script():
+            __import__("venvstarter").manager.min_python(3.7).run("python")
+
+        with pytest.helpers.PATH.configure(3.6, 3.7, python3=3.6, python=3.6, mock_sys=3.6):
+            with pytest.helpers.make_script(script, prepare_venv=True) as filename:
+                pytest.helpers.assertPythonVersion(filename, "3.7")
+
+                with pytest.helpers.PATH.configure(
+                    3.6, 3.7, 3.8, python3=3.8, python=3.8, mock_sys=3.8
+                ):
+                    pytest.helpers.assertPythonVersion(filename, "3.7")
+
+                    def script():
+                        __import__("venvstarter").manager.min_python(3.8).run("python")
+
+                    pytest.helpers.write_script(script, filename=filename)
+                    pytest.helpers.assertPythonVersion(filename, "3.8")
