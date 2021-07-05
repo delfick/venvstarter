@@ -1,6 +1,7 @@
 #!/bin/bash
+
 if [[ -z $PARALLEL_PYTEST ]]; then
-  pytest -q "$*"
+  exec bash -c "pytest -q $*"
 else
-  pytest -q --workers $PARALLEL_PYTEST "$*"
+  exec bash -c "pytest -q --workers $PARALLEL_PYTEST $*"
 fi

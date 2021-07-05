@@ -78,8 +78,26 @@ class memoized_property(object):
 
 class PythonHandler:
     def __init__(self, min_python=3, max_python=3):
-        self.min_python = min_python
-        self.max_python = max_python
+        self._min_python = min_python
+        self._max_python = max_python
+
+    @memoized_property
+    def min_python(self):
+        if self._min_python is None:
+            return None
+        version = self._min_python
+        if isinstance(self._min_python, (int, float, str)):
+            version = StrictVersion(str(self._min_python))
+        return StrictVersion("{0}.{1}".format(*version.version))
+
+    @memoized_property
+    def max_python(self):
+        if self._max_python is None:
+            return None
+        version = self._max_python
+        if isinstance(self._max_python, (int, float, str)):
+            version = StrictVersion(str(self._max_python))
+        return StrictVersion("{0}.{1}".format(*version.version))
 
     def suitable(self, version):
         if version is None:
@@ -147,7 +165,7 @@ class PythonHandler:
             if fle is not None and os.path.exists(fle.name):
                 os.remove(fle.name)
 
-    def version_for(self, executable, raise_error=False):
+    def version_for(self, executable, raise_error=False, zero_patch=False):
         if executable is None:
             return None, None
 
@@ -161,7 +179,10 @@ class PythonHandler:
             return executable, None
 
         try:
-            vers = "{0}.{1}.{2}".format(*json.loads(version_info))
+            if zero_patch:
+                vers = "{0}.{1}".format(*json.loads(version_info))
+            else:
+                vers = "{0}.{1}.{2}".format(*json.loads(version_info))
         except (TypeError, ValueError) as error:
             raise Exception(
                 f"Failed to figure out python version\nLooking at:\n=====\n{version_info}\n=====\nError: {error}"
@@ -201,14 +222,14 @@ class PythonHandler:
 
     def find(self):
         if self.max_python is None:
-            _, version = self.version_for(sys.executable)
+            _, version = self.version_for(sys.executable, zero_patch=True)
             if self.suitable(version):
                 return sys.executable
 
         max_python = self.min_python
         if self.max_python is None:
-            _, max_python_1 = self.version_for(shutil.which("python3"))
-            _, max_python_2 = self.version_for(shutil.which("python"))
+            _, max_python_1 = self.version_for(shutil.which("python3"), zero_patch=True)
+            _, max_python_2 = self.version_for(shutil.which("python"), zero_patch=True)
             found = [
                 m for m in (max_python_1, max_python_2) if m is not None and m > self.min_python
             ]
@@ -222,7 +243,7 @@ class PythonHandler:
         tried = []
         for version in self.versions(max_python):
             tried.append(version)
-            executable, found = self.version_for(shutil.which(version))
+            executable, found = self.version_for(shutil.which(version), zero_patch=True)
             if self.suitable(found):
                 return executable
 
@@ -324,34 +345,15 @@ class Starter(object):
         if self.min_python_version is None:
             self.min_python_version = 3.0
 
-        if self.max_python is not None and not isinstance(self.max_python, StrictVersion):
-            self.max_python = StrictVersion(str(self.max_python))
-        if not isinstance(self.min_python, StrictVersion):
-            self.min_python = StrictVersion(str(self.min_python))
+        handler = PythonHandler(self.min_python_version, self.max_python_version)
+        self.min_python = handler.min_python
+        self.max_python = handler.max_python
 
         if self.max_python is not None and self.min_python > self.max_python:
             raise Exception("min_python_version must be less than max_python_version")
 
-        if self.min_python_version < 3:
+        if self.min_python < StrictVersion("3.0"):
             raise Exception("Only support python3 and above")
-
-    @memoized_property
-    def min_python(self):
-        if self.min_python_version is None:
-            return StrictVersion("3.6")
-        elif isinstance(self.min_python_version, StrictVersion):
-            return self.min_python_version
-        else:
-            return StrictVersion(str(self.min_python_version))
-
-    @memoized_property
-    def max_python(self):
-        if self.max_python_version is None:
-            return None
-        elif isinstance(self.max_python_version, StrictVersion):
-            return self.max_python_version
-        else:
-            return StrictVersion(str(self.max_python_version))
 
     @memoized_property
     def venv_location(self):
