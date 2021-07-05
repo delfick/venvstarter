@@ -76,6 +76,38 @@ class memoized_property(object):
         setattr(instance, self.key, value)
 
 
+class Shebang:
+    def __init__(self, *cmd):
+        self.cmd = cmd
+
+    def produce(self, only_for_windows=False):
+        cmd = self.cmd
+        if not cmd:
+            return
+
+        if only_for_windows and os.name != "nt":
+            yield from cmd
+            return
+
+        with open(Path(cmd[0]).resolve()) as fle:
+            try:
+                part = fle.read(2)
+            except UnicodeDecodeError:
+                part = ""
+
+            if part == "#!":
+                shb = fle.readline().strip()
+                if os.name == "nt":
+                    if " " in shb:
+                        if os.path.basename(shb.split(" ")[0]) == "env":
+                            shb = shb[shb.find(" ") + 1 :]
+                    yield shb
+                else:
+                    yield from shlex.split(shb)
+
+        yield from cmd
+
+
 class PythonHandler:
     def __init__(self, min_python=3, max_python=3):
         self._min_python = min_python
@@ -112,30 +144,7 @@ class PythonHandler:
         return True
 
     def with_shebang(self, *cmd, only_for_windows=False):
-        if only_for_windows and os.name != "nt":
-            yield from cmd
-            return
-
-        if not cmd:
-            return
-
-        with open(cmd[0]) as fle:
-            try:
-                part = fle.read(2)
-            except UnicodeDecodeError:
-                part = ""
-
-            if part == "#!":
-                shb = fle.readline().strip()
-                if os.name == "nt":
-                    if " " in shb:
-                        if os.path.basename(shb.split(" ")[0]) == "env":
-                            shb = shb[shb.find(" ") + 1 :]
-                    yield shb
-                else:
-                    yield from shlex.split(shb)
-
-        yield from cmd
+        return Shebang(*cmd).produce(only_for_windows=only_for_windows)
 
     def get_output(self, python_exe, script, **kwargs):
         return self.run_command(python_exe, script, get_output=True, **kwargs)
@@ -177,6 +186,9 @@ class PythonHandler:
             if raise_error:
                 raise
             return executable, None
+
+        if version_info:
+            version_info = version_info.split("\n")[-1]
 
         try:
             if zero_patch:
@@ -222,7 +234,7 @@ class PythonHandler:
 
     def find(self):
         if self.max_python is None:
-            _, version = self.version_for(sys.executable, zero_patch=True)
+            ex, version = self.version_for(sys.executable, zero_patch=True)
             if self.suitable(version):
                 return sys.executable
 
@@ -414,10 +426,10 @@ class Starter(object):
             if python_exe is None:
                 python_exe = PythonHandler(self.min_python, self.max_python).find()
 
-            print("Creating virtualenv")
-            print(f"Destination: {self.venv_location}")
-            print(f"Using: {python_exe}")
-            print()
+            print("Creating virtualenv", file=sys.stderr)
+            print(f"Destination: {self.venv_location}", file=sys.stderr)
+            print(f"Using: {python_exe}", file=sys.stderr)
+            print(file=sys.stderr)
 
             PythonHandler().run_command(
                 python_exe,
@@ -446,11 +458,8 @@ class Starter(object):
             del env["__PYVENV_LAUNCHER__"]
 
         def check_deps():
-            return (
-                PythonHandler()
-                .run_command(
-                    self.venv_python,
-                    """
+            handler = PythonHandler()
+            question = """
                 import pkg_resources
                 import sys
                 try:
@@ -459,13 +468,10 @@ class Starter(object):
                     sys.stderr.write(str(error) + "\\n\\n")
                     sys.stderr.flush()
                     raise SystemExit(1)
-            """.format(
-                        deps
-                    ),
-                    check=False,
-                )
-                .returncode
+                """.format(
+                deps
             )
+            return handler.run_command(self.venv_python, question, check=False).returncode
 
         ret = check_deps()
         if ret != 0:
@@ -524,7 +530,7 @@ class Starter(object):
             return
 
         if os.name == "nt":
-            cmd = list(PythonHandler().with_shebang(*cmd, *args))
+            cmd = list(Shebang(*cmd, *args).produce())
             p = subprocess.run(cmd)
             sys.exit(p.returncode)
 

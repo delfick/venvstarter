@@ -7,6 +7,7 @@ import json
 pytestmark = pytest.mark.usage_tests
 
 describe "Finding the right version":
+
     it "can be used to symlink install and run a local package":
         with pytest.helpers.directory_creator() as creator:
 

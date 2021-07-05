@@ -167,6 +167,20 @@ class PATH:
     def __init__(self, pythons):
         self.pythons = pythons
 
+    def link(self, tmpdir, paths, executable, *, end):
+        endwithext = end
+        if os.name == "nt":
+            endwithext = f"{end}.exe"
+
+        if end in ("3", ""):
+            os.link(executable, os.path.join(tmpdir, f"python{endwithext}"))
+        else:
+            parent = os.path.dirname(executable)
+            location = os.path.join(parent, f"python{endwithext}")
+            if not os.path.exists(location):
+                os.link(executable, location)
+            paths.append(os.path.dirname(executable))
+
     @contextmanager
     def configure(self, *versions, python3=None, python=False, mock_sys=False):
         tmpdir = None
@@ -179,9 +193,9 @@ class PATH:
             tmpdir = tempfile.mkdtemp(
                 suffix=f'__INCLUDING__-{"_".join(str(v) for v in versions)}-python={python}-python3={python3}'
             )
+            paths = [tmpdir]
 
-            def link(executable, *, end):
-                os.link(executable, os.path.join(tmpdir, f"python{end}"))
+            link = lambda exe, *, end: self.link(tmpdir, paths, exe, end=end)
 
             for version in versions:
                 link(self.pythons[version], end=str(version))
@@ -195,7 +209,10 @@ class PATH:
             if python is None:
                 link(sys.executable, end="")
 
-            os.environ["PATH"] = tmpdir
+            if os.name == "nt":
+                os.environ["PATH"] = ";".join(paths)
+            else:
+                os.environ["PATH"] = ":".join(paths)
 
             if mock_sys is not False:
                 with mock.patch.object(sys, "executable", self.pythons[mock_sys]):
