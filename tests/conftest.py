@@ -3,6 +3,7 @@ from distutils.version import StrictVersion
 from contextlib import contextmanager
 from textwrap import dedent
 from unittest import mock
+from pathlib import Path
 import subprocess
 import tempfile
 import inspect
@@ -12,7 +13,7 @@ import json
 import sys
 import os
 
-this_dir = os.path.dirname(__file__)
+this_dir = Path(__file__).parent
 
 
 class Pythons:
@@ -42,8 +43,8 @@ class PythonsFinder:
         self.made_venvs = made_venvs
 
     def pythons_json(self, want):
-        location = os.path.join(this_dir, "..", "pythons.json")
-        if not os.path.isfile(location):
+        location = Path(this_dir) / ".." / "pythons.json"
+        if not location.is_file():
             pytest.exit(
                 "You must have a pythons.json in the root of your venvstarter that says where each python can be found"
             )
@@ -59,14 +60,12 @@ class PythonsFinder:
         if missing:
             pytest.exit(f"Missing entries in pythons.json for {', '.join(missing)}")
 
-        return pythons
+        return {k: Path(v) for k, v in pythons.items()}
 
     def normalise_python_location(self, pythons, k):
-        location = os.path.expanduser(pythons[k])
-        if os.name == "nt":
-            location = location.replace("/", "\\")
+        location = pythons[k].expanduser()
 
-        if not os.path.isfile(location):
+        if not location.is_file():
             pytest.exit(f"Entry for {k} ({location}) is not a file")
 
         _, version_info = PythonHandler().version_for(location, raise_error=True)
@@ -78,30 +77,30 @@ class PythonsFinder:
         return location
 
     def make_venv(self, python_exe, version, errors):
-        venv_location = os.path.join(self.made_venvs, f"venv{version}")
-        if not os.path.exists(venv_location):
+        venv_location = self.made_venvs / f"venv{version}"
+        if not venv_location.exists():
             PythonHandler().run_command(
                 python_exe,
                 f"""
                 import json
                 import venv
-                venv.create({json.dumps(venv_location)}, with_pip=True)
+                venv.create({json.dumps(str(venv_location))}, with_pip=True)
             """,
             )
 
         if os.name == "nt":
-            py = os.path.join(venv_location, "Scripts", "python.exe")
+            py = venv_location / "Scripts" / "python.exe"
         else:
-            py = os.path.join(venv_location, "bin", "python")
+            py = venv_location / "bin" / "python"
 
-        if not os.path.exists(py):
+        if not py.exists():
             if errors:
-                if os.path.exists(venv_location):
+                if venv_location.exists():
                     assert False, ("venv doesn't exist", venv_location)
                 else:
-                    assert False, ("Couldn't find python", os.listdir(venv_location))
+                    assert False, ("Couldn't find python", venv_location.iterdir())
 
-            if os.path.exists(venv_location):
+            if venv_location.exists():
                 shutil.rmtree(venv_location)
 
             return
@@ -114,7 +113,7 @@ class PythonsFinder:
                 PythonHandler().run_command(python_exe, "import venvstarter", cwd=tmpdir)
         except FailedToGetOutput:
             subprocess.run(
-                [python_exe, "-m", "pip", "install", os.path.join(this_dir, "..")],
+                [str(python_exe), "-m", "pip", "install", str(this_dir.parent)],
                 check=True,
             )
 
@@ -157,7 +156,7 @@ class PythonsFinder:
                 if not self.ensure_venvstarter_version(py, venv_location, errors):
                     continue
 
-            assert py is not None and os.path.exists(py)
+            assert py is not None and py.exists()
             pythons[k] = py
 
         return Pythons(pythons)
@@ -173,13 +172,13 @@ class PATH:
             endwithext = f"{end}.exe"
 
         if end in ("3", ""):
-            os.link(executable, os.path.join(tmpdir, f"python{endwithext}"))
+            os.link(str(executable), str(tmpdir / f"python{endwithext}"))
         else:
-            parent = os.path.dirname(executable)
-            location = os.path.join(parent, f"python{endwithext}")
-            if not os.path.exists(location):
-                os.link(executable, location)
-            paths.append(os.path.dirname(executable))
+            parent = executable.parent
+            location = parent / f"python{endwithext}"
+            if not location.exists():
+                os.link(str(executable), str(location))
+            paths.append(executable.parent)
 
     @contextmanager
     def configure(self, *versions, python3=None, python=False, mock_sys=False):
@@ -190,8 +189,10 @@ class PATH:
 
         before = os.environ.get("PATH", Empty)
         try:
-            tmpdir = tempfile.mkdtemp(
-                suffix=f'__INCLUDING__-{"_".join(str(v) for v in versions)}-python={python}-python3={python3}'
+            tmpdir = Path(
+                tempfile.mkdtemp(
+                    suffix=f'__INCLUDING__-{"_".join(str(v) for v in versions)}-python={python}-python3={python3}'
+                )
             )
             paths = [tmpdir]
 
@@ -210,9 +211,9 @@ class PATH:
                 link(sys.executable, end="")
 
             if os.name == "nt":
-                os.environ["PATH"] = ";".join(paths)
+                os.environ["PATH"] = ";".join(str(p) for p in paths)
             else:
-                os.environ["PATH"] = ":".join(paths)
+                os.environ["PATH"] = ":".join(str(p) for p in paths)
 
             if mock_sys is not False:
                 with mock.patch.object(sys, "executable", self.pythons[mock_sys]):
@@ -220,7 +221,7 @@ class PATH:
             else:
                 yield
         finally:
-            if tmpdir is not None and os.path.exists(tmpdir):
+            if tmpdir is not None and tmpdir.exists():
                 shutil.rmtree(tmpdir)
             if before is Empty:
                 if "PATH" in os.environ:
@@ -257,9 +258,9 @@ def write_script(func, args="", *, filename, exe=None, prepare_venv=False):
     os.chmod(filename, 0o755)
 
     if prepare_venv:
-        cmd = filename
+        cmd = str(filename)
         if os.name == "nt":
-            cmd = [exe or sys.executable, filename]
+            cmd = [str(exe or sys.executable), str(filename)]
         subprocess.run(
             cmd,
             env={**os.environ, "VENVSTARTER_ONLY_MAKE_VENV": "1"},
@@ -271,12 +272,12 @@ def write_script(func, args="", *, filename, exe=None, prepare_venv=False):
 def make_script(func, args="", exe=None, prepare_venv=False):
     directory = None
     try:
-        directory = tempfile.mkdtemp()
-        location = os.path.join(directory, "starter")
+        directory = Path(tempfile.mkdtemp())
+        location = directory / "starter"
         write_script(func, args=args, exe=exe, prepare_venv=prepare_venv, filename=location)
         yield location
     finally:
-        if directory and os.path.exists(directory):
+        if directory and directory.exists():
             shutil.rmtree(directory)
 
 
@@ -284,7 +285,7 @@ def get_output(venvstarter_script_filename, *args):
     try:
         output = (
             subprocess.check_output(
-                list(PythonHandler().with_shebang(venvstarter_script_filename, *args)),
+                [str(q) for q in PythonHandler().with_shebang(venvstarter_script_filename, *args)],
                 stderr=subprocess.PIPE,
             )
             .strip()
@@ -308,23 +309,25 @@ class DirectoryCreator:
             self.write(path, content, mode=mode)
 
     def write(self, path, content, mode=0o644):
-        location = os.path.join(self.path, *path)
-        parent = os.path.dirname(location)
-        if not os.path.exists(parent):
-            os.makedirs(parent)
+        location = self.path
+        for part in path:
+            location = location / part
+
+        if not os.path.exists(location.parent):
+            location.parent.mkdir()
         with open(location, "w") as fle:
             fle.write(dedent(content).strip())
         os.chmod(location, mode)
 
     def __enter__(self):
         if not hasattr(self, "path"):
-            self.path = tempfile.mkdtemp()
+            self.path = Path(tempfile.mkdtemp())
         for path, content in self.files.items():
             self.write(path, content)
         return self
 
     def __exit__(self, exc_typ, exc, tb):
-        if hasattr(self, "path") and os.path.exists(self.path):
+        if hasattr(self, "path") and self.path.exists():
             shutil.rmtree(self.path)
             del self.path
 
@@ -347,12 +350,12 @@ def pytest_configure(config):
 
     mv = None
     if "TEST_VENVS" in os.environ:
-        mv = os.environ["TEST_VENVS"]
-        if not os.path.exists(mv):
-            os.makedirs(mv)
+        mv = Path(os.environ["TEST_VENVS"])
+        if not mv.exists():
+            mv.mkdir()
     else:
         global made_venvs
-        made_venvs = tempfile.mkdtemp()
+        made_venvs = Path(tempfile.mkdtemp())
         mv = made_venvs
 
     pythons = PythonsFinder(mv).find()
@@ -367,5 +370,5 @@ def pytest_configure(config):
 
 
 def pytest_unconfigure(config):
-    if made_venvs and os.path.exists(made_venvs):
+    if made_venvs and made_venvs.exists():
         shutil.rmtree(made_venvs)

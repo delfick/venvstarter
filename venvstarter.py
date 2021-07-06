@@ -98,7 +98,7 @@ class Shebang:
                 shb = fle.readline().strip()
                 if os.name == "nt":
                     if " " in shb:
-                        if os.path.basename(shb.split(" ")[0]) == "env":
+                        if Path(shb.split(" ")[0]).name == "env":
                             shb = shb[shb.find(" ") + 1 :]
                     yield shb
                 else:
@@ -155,7 +155,9 @@ class PythonHandler:
             fle.write(dedent(script))
             fle.close()
 
-            question = list(self.with_shebang(python_exe, fle.name, only_for_windows=True))
+            question = [
+                str(q) for q in self.with_shebang(python_exe, fle.name, only_for_windows=True)
+            ]
             if get_output:
                 return (
                     (subprocess.check_output(question, **{"stderr": subprocess.PIPE, **kwargs}))
@@ -170,8 +172,9 @@ class PythonHandler:
                 stde = error.stderr.decode()
             raise FailedToGetOutput(stde, error)
         finally:
-            if fle is not None and os.path.exists(fle.name):
-                os.remove(fle.name)
+            location = Path(fle.name)
+            if fle is not None and location.exists():
+                location.unlink()
 
     def version_for(self, executable, raise_error=False, zero_patch=False):
         if executable is None:
@@ -362,26 +365,26 @@ class Starter(object):
     @memoized_property
     def venv_location(self):
         folder = self.venv_folder
-        if os.path.isfile(folder):
-            folder = os.path.dirname(folder)
+        if folder.is_file():
+            folder = folder.parent
 
-        if not os.path.exists(folder):
-            os.makedirs(folder)
+        if not folder.exists():
+            folder.mkdir()
 
-        return os.path.abspath(os.path.join(folder, self.venv_folder_name))
+        return (Path(folder) / self.venv_folder_name).absolute()
 
     def venv_script(self, name):
         if os.name == "nt":
-            location = os.path.join(self.venv_location, "Scripts", name)
+            location = self.venv_location / "Scripts" / name
         else:
-            location = os.path.join(self.venv_location, "bin", name)
+            location = self.venv_location / "bin" / name
 
-        if os.path.exists(location):
+        if location.exists():
             return location
 
         if os.name == "nt":
-            exe = f"{location}.exe"
-            if os.path.exists(exe):
+            exe = location.with_suffix(".exe")
+            if exe.exists():
                 return exe
 
         raise Exception(
@@ -389,7 +392,7 @@ class Starter(object):
                 [
                     "\nCouldn't find the executable!",
                     f"Wanted {name}",
-                    f"Available is {os.listdir(os.path.dirname(location))}",
+                    f"Available is {location.iterdir()}",
                 ]
             )
         )
@@ -400,7 +403,7 @@ class Starter(object):
 
     def make_virtualenv(self):
         python_exe = None
-        if os.path.exists(self.venv_location):
+        if self.venv_location.exists():
             finder = PythonHandler(self.min_python, self.max_python)
             _, version_info = finder.version_for(self.venv_python)
             if not finder.suitable(version_info):
@@ -414,7 +417,7 @@ class Starter(object):
                 else:
                     shutil.rmtree(self.venv_location)
 
-        if not os.path.exists(self.venv_location):
+        if not self.venv_location.exists():
             if python_exe is None:
                 python_exe = PythonHandler(self.min_python, self.max_python).find()
 
@@ -427,7 +430,7 @@ class Starter(object):
                 python_exe,
                 f"""
             import venv
-            venv.create({json.dumps(self.venv_location)}, with_pip=True, symlinks=True)
+            venv.create({json.dumps(str(self.venv_location))}, with_pip=True, symlinks=True)
             """,
             )
 
@@ -476,11 +479,12 @@ class Starter(object):
                 reqs.write("\n".join(str(dep) for dep in self.deps).encode("utf-8"))
                 reqs.close()
 
-                cmd = [self.venv_python, "-m", "pip", "install", "-r", reqs.name]
+                cmd = [str(self.venv_python), "-m", "pip", "install", "-r", reqs.name]
                 ret = subprocess.call(cmd, env=env)
             finally:
-                if reqs is not None and os.path.exists(reqs.name):
-                    os.remove(reqs.name)
+                reqs_loc = Path(reqs.name)
+                if reqs is not None and reqs_loc.exists():
+                    reqs_loc.unlink()
 
             if ret != 0:
                 raise SystemExit(1)
@@ -508,8 +512,8 @@ class Starter(object):
     def env_for_program(self):
         env = dict(os.environ)
 
-        home = os.path.expanduser("~")
-        venv_parent = os.path.dirname(self.venv_location)
+        home = Path.home()
+        venv_parent = self.venv_location.parent
         if self.env is not None:
             normalised = {}
 
@@ -520,11 +524,20 @@ class Starter(object):
             for here, vv in ev:
                 for k, v in vv.items():
                     if not isinstance(v, (list, tuple)):
-                        v = [v]
-                    normalised[k] = os.path.join(
-                        *[vv.format(here=here, home=home, venv_parent=venv_parent) for vv in v]
-                    )
-
+                        normalised[k] = v.format(
+                            here=str(here), home=str(home), venv_parent=str(venv_parent)
+                        )
+                    else:
+                        normalised[k] = str(
+                            Path(
+                                *[
+                                    item.format(
+                                        here=str(here), home=str(home), venv_parent=str(venv_parent)
+                                    )
+                                    for item in v
+                                ]
+                            )
+                        )
             env.update(normalised)
 
         # Fix a bug whereby the virtualenv has the wrong sys.executable
@@ -544,7 +557,7 @@ class Starter(object):
         env = self.env_for_program()
 
         if os.name == "nt":
-            cmd = list(Shebang(*cmd, *args).produce())
+            cmd = [str(q) for q in Shebang(*cmd, *args).produce()]
             p = subprocess.run(cmd, env=env)
             sys.exit(p.returncode)
 
@@ -572,9 +585,7 @@ class NotSpecified:
 class manager:
     def __init__(self, program, here=None):
         if here is None:
-            here = os.path.abspath(
-                os.path.dirname(inspect.currentframe().f_back.f_code.co_filename)
-            )
+            here = Path(inspect.currentframe().f_back.f_code.co_filename).parent.absolute()
 
         self.here = here
         self.program = program
@@ -587,7 +598,7 @@ class manager:
         self._venv_folder_name = None
 
     def place_venv_in(self, location):
-        self._venv_folder = location
+        self._venv_folder = Path(location)
         return self
 
     def min_python(self, version):
@@ -607,16 +618,16 @@ class manager:
         return self
 
     def add_requirements_file(self, *parts):
-        home = os.path.expanduser("~")
+        home = Path.home()
 
-        path = os.path.join(
+        path = Path(
             *[
-                part.format(venv_parent=self.venv_folder, here=self.here, home=home)
+                part.format(here=str(self.here), home=str(home), venv_parent=str(self.venv_folder))
                 for part in parts
             ]
         )
 
-        if not os.path.exists(path):
+        if not path.exists():
             raise Exception(
                 "Resolved requirements.txt ({parts}) to '{path}' but that does not exist"
             )
@@ -630,11 +641,11 @@ class manager:
         return self
 
     def add_local_dep(self, *parts, editable=True, version_file=None, with_tests=False, name):
-        home = os.path.expanduser("~")
+        home = Path.home()
 
-        path = os.path.join(
+        path = Path(
             *[
-                part.format(venv_parent=self.venv_folder, here=self.here, home=home)
+                part.format(here=str(self.here), home=str(home), venv_parent=str(self.venv_folder))
                 for part in parts
             ]
         )
@@ -643,8 +654,9 @@ class manager:
         if version_file is not None:
             if isinstance(version_file, str):
                 version_file = [version_file]
-            version_file = os.path.join(path, *version_file)
-            version = runpy.run_path(version_file)["VERSION"]
+
+            location = Path(path, *version_file)
+            version = runpy.run_path(location)["VERSION"]
 
             if "{version}" not in name:
                 raise VersionNotSpecified(name)

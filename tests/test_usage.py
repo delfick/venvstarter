@@ -1,5 +1,6 @@
 # coding: spec
 
+from pathlib import Path
 import pytest
 import time
 import json
@@ -29,7 +30,7 @@ describe "Finding the right version":
             )
 
             output = pytest.helpers.get_output(
-                os.path.join(creator.path, "start"),
+                str(creator.path / "start"),
                 "-c",
                 "import dict2xml; import pip_chill; print('yay')",
             ).split("\n")
@@ -75,7 +76,7 @@ describe "Finding the right version":
                 ).run()
 
             with pytest.helpers.make_script(
-                script, json.dumps(creator.path), prepare_venv=True
+                script, json.dumps(str(creator.path)), prepare_venv=True
             ) as filename:
                 output = pytest.helpers.get_output(filename, "and", "it", "works")
                 assert output == "THINGY and it works"
@@ -171,10 +172,10 @@ describe "Finding the right version":
             wanted.update(
                 {
                     "ONE": "1",
-                    "TWO": os.path.expanduser("~"),
-                    "THREE": os.path.join(os.path.expanduser("~"), "one"),
-                    "FOUR": os.path.dirname(filename),
-                    "FIVE": os.path.join(os.path.dirname(filename), "things"),
+                    "TWO": str(Path.home()),
+                    "THREE": str(Path.home() / "one"),
+                    "FOUR": str(filename.parent),
+                    "FIVE": str(filename.parent / "things"),
                     "SIX": "20",
                 }
             )

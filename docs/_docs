@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
+import pathlib
 import runpy
-import os
 
-this_dir = os.path.dirname(__file__)
-
-manager = runpy.run_path(os.path.join(this_dir, "..", "venvstarter.py"))["manager"]
+manager = runpy.run_path(pathlib.Path(__file__).parent / ".." / "venvstarter.py")["manager"]
 
 manager.add_requirements_file("{here}", "requirements.txt")
 manager.add_local_dep(
