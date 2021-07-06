@@ -519,7 +519,13 @@ class Starter(object):
         env = dict(os.environ)
         venv_parent = os.path.dirname(self.venv_location)
         if self.env is not None:
-            env.update({k: v.format(venv_parent=venv_parent) for k, v in self.env.items()})
+            normalised = {}
+            for k, v in self.env.items():
+                if not isinstance(v, (list, tuple)):
+                    v = [v]
+                normalised[k] = os.path.join(*[vv.format(venv_parent=venv_parent) for vv in v])
+
+            env.update(normalised)
 
         # Fix a bug whereby the virtualenv has the wrong sys.executable
         if "__PYVENV_LAUNCHER__" in env:

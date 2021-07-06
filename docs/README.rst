@@ -11,6 +11,6 @@ If you want to build from fresh then say::
 
 Once your documentation is built do something like::
 
-   $ python3 -m http.server 9087
+   $ ./build_docs view
 
-And go to http://localhost:9087/_build/html/index.html
+And go to http://localhost:9876/_build/html/index.html
