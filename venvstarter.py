@@ -569,7 +569,7 @@ class NotSpecified:
     pass
 
 
-class VenvManager:
+class manager:
     def __init__(self, program, here=None):
         if here is None:
             here = os.path.abspath(
@@ -695,12 +695,6 @@ class VenvManager:
         ).run()
 
 
-def manager(program, here=None):
-    if here is None:
-        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
-    return VenvManager(program, here=here)
-
-
 def ignite(
     venv_folder,
     program,
@@ -773,4 +767,10 @@ def ignite(
     m.run()
 
 
-__all__ = ["ignite", "manager", "VenvManager", "PythonHandler", "FailedToGetOutput"]
+__all__ = [
+    "manager",
+    "PythonHandler",
+    "FailedToGetOutput",
+    # and ignite for backwards compatibility
+    "ignite",
+]
