@@ -570,7 +570,13 @@ class NotSpecified:
 
 
 class VenvManager:
-    def __init__(self, program):
+    def __init__(self, program, here=None):
+        if here is None:
+            here = os.path.abspath(
+                os.path.dirname(inspect.currentframe().f_back.f_code.co_filename)
+            )
+
+        self.here = here
         self.program = program
 
         self._env = []
@@ -602,9 +608,13 @@ class VenvManager:
 
     def add_requirements_file(self, *parts):
         home = os.path.expanduser("~")
-        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
 
-        path = os.path.join(*[part.format(here=here, home=home) for part in parts])
+        path = os.path.join(
+            *[
+                part.format(venv_parent=self.venv_folder, here=self.here, home=home)
+                for part in parts
+            ]
+        )
 
         if not os.path.exists(path):
             raise Exception(
@@ -621,9 +631,13 @@ class VenvManager:
 
     def add_local_dep(self, *parts, editable=True, version_file=None, with_tests=False, name):
         home = os.path.expanduser("~")
-        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
 
-        path = os.path.join(*[part.format(here=here, home=home) for part in parts])
+        path = os.path.join(
+            *[
+                part.format(venv_parent=self.venv_folder, here=self.here, home=home)
+                for part in parts
+            ]
+        )
 
         version = ""
         if version_file is not None:
@@ -649,8 +663,7 @@ class VenvManager:
         return self
 
     def add_env(self, **env):
-        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
-        self._env.append((here, env))
+        self._env.append((self.here, env))
         return self
 
     @property
@@ -664,17 +677,16 @@ class VenvManager:
                 self._venv_folder_name = f".{self.program}"
         return self._venv_folder_name
 
-    def venv_folder(self, here):
+    @property
+    def venv_folder(self):
         if self._venv_folder is NotSpecified:
-            self._venv_folder = here
+            self._venv_folder = self.here
         return self._venv_folder
 
     def run(self):
-        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
-
         Starter(
             self.program,
-            self.venv_folder(here),
+            self.venv_folder,
             self.venv_folder_name,
             env=self._env,
             deps=self._deps,
@@ -683,8 +695,10 @@ class VenvManager:
         ).run()
 
 
-def manager(program):
-    return VenvManager(program)
+def manager(program, here=None):
+    if here is None:
+        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
+    return VenvManager(program, here=here)
 
 
 def ignite(
