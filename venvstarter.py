@@ -7,11 +7,10 @@ It allows the creation of a shell script like the following::
     #!/usr/bin/env python3
 
     (
-        __import__("venvstarter").manager
-        .named(".harpoon")
+        __import__("venvstarter").manager("harpoon")
         .add_pypi_deps("docker-harpoon==0.12.1")
-        .add_env(HARPOON_CONFIG="{venv_parent}/harpoon.yml")
-        .run("harpoon")
+        .add_env(HARPOON_CONFIG=("{venv_parent}","harpoon.yml"))
+        .run()
     )
 
 Such that running the script will ensure a Python virtualenv exists with the
@@ -328,34 +327,27 @@ class Starter(object):
 
     def __init__(
         self,
-        venv_folder,
         program,
+        venv_folder,
+        venv_folder_name,
         deps=None,
         env=None,
         min_python_version=None,
         max_python_version=None,
-        venv_folder_name=None,
     ):
         self.env = env
         self.deps = deps
         self.program = program
         self.venv_folder = venv_folder
+        self.venv_folder_name = venv_folder_name
         self.min_python_version = min_python_version
         self.max_python_version = max_python_version
 
         if self.deps is None:
             self.deps = []
 
-        if venv_folder_name is None:
-            if not isinstance(program, str) or not re.match("([a-zA-Z]+(0-9)*)+", program):
-                venv_folder_name = ".venv"
-            else:
-                venv_folder_name = f".{self.program}"
-
-        self.venv_folder_name = venv_folder_name
-
         if self.min_python_version is None:
-            self.min_python_version = 3.0
+            self.min_python_version = 3.6
 
         handler = PythonHandler(self.min_python_version, self.max_python_version)
         self.min_python = handler.min_python
@@ -364,8 +356,8 @@ class Starter(object):
         if self.max_python is not None and self.min_python > self.max_python:
             raise Exception("min_python_version must be less than max_python_version")
 
-        if self.min_python < StrictVersion("3.0"):
-            raise Exception("Only support python3 and above")
+        if self.min_python < StrictVersion("3.6"):
+            raise Exception("Only support python3.6 and above")
 
     @memoized_property
     def venv_location(self):
@@ -513,9 +505,7 @@ class Starter(object):
         else:
             raise Exception(f"Not sure what to do with this program: {program}")
 
-    def start_program(self, args):
-        if os.environ.get("VENVSTARTER_ONLY_MAKE_VENV") == "1":
-            return
+    def env_for_program(self):
         env = dict(os.environ)
 
         home = os.path.expanduser("~")
@@ -541,13 +531,21 @@ class Starter(object):
         if "__PYVENV_LAUNCHER__" in env:
             del env["__PYVENV_LAUNCHER__"]
 
+        return env
+
+    def start_program(self, args):
+        if os.environ.get("VENVSTARTER_ONLY_MAKE_VENV") == "1":
+            return
+
         cmd = self.determine_command()
         if not cmd:
             return
 
+        env = self.env_for_program()
+
         if os.name == "nt":
             cmd = list(Shebang(*cmd, *args).produce())
-            p = subprocess.run(cmd)
+            p = subprocess.run(cmd, env=env)
             sys.exit(p.returncode)
 
         try:
@@ -555,12 +553,7 @@ class Starter(object):
         except OSError as error:
             sys.exit(error)
 
-    def ignite(self, args=None):
-        """
-        * Make the virtualenv
-        * Install dependencies into that virtualenv
-        * Start the program!
-        """
+    def run(self, args=None):
         if args is None:
             args = sys.argv[1:]
 
@@ -577,7 +570,9 @@ class NotSpecified:
 
 
 class VenvManager:
-    def __init__(self):
+    def __init__(self, program):
+        self.program = program
+
         self._env = []
         self._deps = []
         self._max_python = None
@@ -658,35 +653,110 @@ class VenvManager:
         self._env.append((here, env))
         return self
 
-    def run(self, program=None):
+    @property
+    def venv_folder_name(self):
+        if self._venv_folder_name is None:
+            if not isinstance(self.program, str) or not re.match(
+                "([a-zA-Z]+(0-9)*)+", self.program
+            ):
+                self._venv_folder_name = ".venv"
+            else:
+                self._venv_folder_name = f".{self.program}"
+        return self._venv_folder_name
+
+    def venv_folder(self, here):
         if self._venv_folder is NotSpecified:
-            self._venv_folder = os.path.abspath(
-                os.path.dirname(inspect.currentframe().f_back.f_code.co_filename)
-            )
+            self._venv_folder = here
+        return self._venv_folder
+
+    def run(self):
+        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
 
         Starter(
-            self._venv_folder,
-            program,
+            self.program,
+            self.venv_folder(here),
+            self.venv_folder_name,
             env=self._env,
             deps=self._deps,
-            venv_folder_name=self._venv_folder_name,
             min_python_version=self._min_python,
             max_python_version=self._max_python,
-        ).ignite()
+        ).run()
 
 
-# An instance for use in single run scripts
-manager = VenvManager()
+def manager(program):
+    return VenvManager(program)
 
 
-def ignite(*args, **kwargs):
+def ignite(
+    venv_folder,
+    program,
+    deps=None,
+    env=None,
+    min_python_version=None,
+    max_python_version=None,
+    venv_folder_name=None,
+):
     """
-    Convenience function to create a Starter instance and call ignite on it
+    Convenience function to use venvstarter that remains as a backwards
+    compatibility to previous versions of venvstarter. The ``venvstarter.manager``
+    should be used instead.
 
-    This remains as a backwards compatibility to previous versions of
-    venvstarter
+    venv_folder
+        A folder that the virtualenv will sit in.
+
+        Note that if you pass in the location of a file, it will use the folder
+        that file sits in. This is convenient so you can just pass in __file__
+        from your bootstrap script.
+
+    program
+        The program to run as None, a list, a string or as a function.
+
+        If set as None, then the python in the virtualenv is run
+
+        If the program is given as a string, we invoke it from the scripts in the
+        virtualenv.
+
+        If the program is given as a list, then we `os.execve(result[0], result + args, env)`
+
+        If the program is given as a function, that function is provided the location to
+        the python in the virtualenv. If the function returns `None` then venvstarter will
+        do nothing more. Otherwise if it will continue as if the program was the result of
+        the function all along.
+
+    deps
+        An optional list of pip dependencies to install into your virtualenv
+
+    env
+        An optional dictionary of environment variables to add to the environment
+        that the program is run in.
+
+        Note that each value is formatted with ``venv_parent`` available, which
+        is the folder the virtualenv sits in.
+
+    min_python_version
+        An optional string or a distutils.version.StrictVersion instance
+        representing the minimum version of python needed for the virtualenv.
+
+        This will always default to 3.6.
+
+    max_python_version
+        An optional string or a distutils.version.StrictVersion instance
+        representing the maximum version of python needed for the virtualenv.
+
+        This must be a version equal to or greater than min_python_version.
     """
-    Starter(*args, **kwargs).ignite()
+    m = manager(program).place_venv_in(venv_folder).min_python(min_python_version or "3.6")
+
+    if deps is not None:
+        m.add_pypi_deps(*deps).add_env
+    if env is not None:
+        m.add_env(**env)
+    if max_python_version is not None:
+        m.max_python_version(max_python_version)
+    if venv_folder_name is not None:
+        m.named(venv_folder_name)
+
+    m.run()
 
 
-__all__ = ["ignite", "manager", "VenvManager", "PythonHandler", "Starter", "FailedToGetOutput"]
+__all__ = ["ignite", "manager", "VenvManager", "PythonHandler", "FailedToGetOutput"]

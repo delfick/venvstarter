@@ -10,7 +10,7 @@ describe "Finding the right version":
     it "will always use current version if no max is specified", version:
 
         def script():
-            __import__("venvstarter").manager.run("python")
+            __import__("venvstarter").manager("python").run()
 
         with pytest.helpers.PATH.configure(version, python=3.9, python3=3.9):
             exe = pytest.helpers.pythons[version]
@@ -21,7 +21,7 @@ describe "Finding the right version":
     it "will use the only version available if within min and max", version:
 
         def script(version):
-            __import__("venvstarter").manager.min_python(version).run("python")
+            __import__("venvstarter").manager("python").min_python(version).run()
 
         for use in pytest.helpers.pythons:
             if use >= version:
@@ -35,7 +35,7 @@ describe "Finding the right version":
     it "can force the virtualenv to get a new version":
 
         def script():
-            __import__("venvstarter").manager.min_python(3.7).run("python")
+            __import__("venvstarter").manager("python").min_python(3.7).run()
 
         with pytest.helpers.PATH.configure(3.6, 3.7, python3=3.6, python=3.6, mock_sys=3.6):
             with pytest.helpers.make_script(script, prepare_venv=True) as filename:
@@ -47,7 +47,7 @@ describe "Finding the right version":
                     pytest.helpers.assertPythonVersion(filename, "3.7")
 
                     def script():
-                        __import__("venvstarter").manager.min_python(3.8).run("python")
+                        __import__("venvstarter").manager("python").min_python(3.8).run()
 
                     pytest.helpers.write_script(script, filename=filename)
                     pytest.helpers.assertPythonVersion(filename, "3.8")

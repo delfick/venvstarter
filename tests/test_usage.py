@@ -23,7 +23,7 @@ describe "Finding the right version":
                 "start",
                 content="""
                 #!/usr/bin/env python
-                __import__("venvstarter").manager.add_requirements_file("{here}", "requirements.txt").run()
+                __import__("venvstarter").manager(None).add_requirements_file("{here}", "requirements.txt").run()
                 """,
                 mode=0o700,
             )
@@ -70,9 +70,9 @@ describe "Finding the right version":
             )
 
             def script(path):
-                __import__("venvstarter").manager.add_local_dep(
+                __import__("venvstarter").manager("thing").add_local_dep(
                     path, version_file=["thing", "__init__.py"], name="thinger=={version}"
-                ).run("thing")
+                ).run()
 
             with pytest.helpers.make_script(
                 script, json.dumps(creator.path), prepare_venv=True
@@ -135,7 +135,7 @@ describe "Finding the right version":
     it "can be used to add a pypi dep":
 
         def script():
-            __import__("venvstarter").manager.add_pypi_deps("dict2xml", "pip-chill").run()
+            __import__("venvstarter").manager(None).add_pypi_deps("dict2xml", "pip-chill").run()
 
         with pytest.helpers.make_script(script, prepare_venv=True) as filename:
             output = pytest.helpers.get_output(
@@ -148,7 +148,7 @@ describe "Finding the right version":
     it "can be used to add environment variables":
 
         def script():
-            __import__("venvstarter").manager.add_env(
+            __import__("venvstarter").manager(None).add_env(
                 ONE="1",
                 TWO="{home}",
                 THREE=("{home}", "one"),
