@@ -284,18 +284,19 @@ class DirectoryCreator:
     def __init__(self):
         self.files = {}
 
-    def add(self, *path, content):
+    def add(self, *path, content, mode=0o644):
         self.files[path] = content
         if hasattr(self, "path"):
-            self.write(path, content)
+            self.write(path, content, mode=mode)
 
-    def write(self, path, content):
+    def write(self, path, content, mode=0o644):
         location = os.path.join(self.path, *path)
         parent = os.path.dirname(location)
         if not os.path.exists(parent):
             os.makedirs(parent)
         with open(location, "w") as fle:
-            fle.write(dedent(content))
+            fle.write(dedent(content).strip())
+        os.chmod(location, mode)
 
     def __enter__(self):
         if not hasattr(self, "path"):

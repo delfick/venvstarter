@@ -3,10 +3,37 @@
 import pytest
 import time
 import json
+import os
 
 pytestmark = pytest.mark.usage_tests
 
 describe "Finding the right version":
+
+    it "can be used to read a requirements.txt":
+        with pytest.helpers.directory_creator() as creator:
+
+            creator.add(
+                "requirements.txt",
+                content="""
+                dict2xml
+                pip-chill
+                """,
+            )
+            creator.add(
+                "start",
+                content="""
+                #!/usr/bin/env python
+                __import__("venvstarter").manager.add_requirements_file("{here}", "requirements.txt").run()
+                """,
+                mode=0o700,
+            )
+
+            output = creator.output(
+                os.path.join(creator.path, "start"),
+                "-c",
+                "import dict2xml; import pip_chill; print('yay')",
+            ).split("\n")
+            assert output[-1] == "yay"
 
     it "can be used to symlink install and run a local package":
         with pytest.helpers.directory_creator() as creator:

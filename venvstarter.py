@@ -589,6 +589,25 @@ class VenvManager:
         self._deps.extend(deps)
         return self
 
+    def add_requirements_file(self, *parts):
+        home = os.path.expanduser("~")
+        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
+
+        path = os.path.join(*[part.format(here=here, home=home) for part in parts])
+
+        if not os.path.exists(path):
+            raise Exception(
+                "Resolved requirements.txt ({parts}) to '{path}' but that does not exist"
+            )
+
+        with open(path) as fle:
+            for line in fle:
+                stripped = line.strip()
+                if stripped:
+                    self._deps.append(stripped)
+
+        return self
+
     def add_local_dep(self, *parts, editable=True, version_file=None, with_tests=False, name):
         home = os.path.expanduser("~")
         here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
