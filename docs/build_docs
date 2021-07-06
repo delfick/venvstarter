@@ -8,3 +8,7 @@ if [[ $1 == "fresh" ]]; then
 fi
 
 ./_docs -b html . _build/html -d _build/doctrees
+
+if [[ $1 == "view" ]]; then
+    exec python3 -m http.server 9876
+fi

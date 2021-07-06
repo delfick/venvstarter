@@ -1,6 +1,6 @@
 .. toctree::
     :hidden:
 
-.. _venvstarter
+.. _venvstarter:
 
 .. include:: ../README.rst
