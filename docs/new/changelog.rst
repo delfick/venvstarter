@@ -8,6 +8,7 @@ Changelog
   * New manager API
   * New docs
   * First class Windows support
+  * No longer rely on distutils, which will be deprecated after 3.10
 
 .. _release-0.8.1:
 

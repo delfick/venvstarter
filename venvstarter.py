@@ -25,7 +25,6 @@ with the rest of the arguments given on the command line.
     If you want to skip checking the versions of your dependencies, then set
     VENV_STARTER_CHECK_DEPS=0 in your environment.
 """
-from distutils.version import StrictVersion
 from textwrap import dedent
 from pathlib import Path
 import subprocess
@@ -40,6 +39,12 @@ import os
 import re
 
 VERSION = "0.8.1"
+
+regexes = {
+    "version_specifier": re.compile(r"([^=><]+)(.*)"),
+    "ascii": re.compile(r"([a-zA-Z]+(0-9)*)+"),
+    "version_string": re.compile(r"^([^\.]+)(?:\.([^\.]+))?(?:\.([^\.]+))?.*"),
+}
 
 
 class FailedToGetOutput(Exception):
@@ -57,6 +62,89 @@ class VersionNotSpecified(Exception):
 
     def __str__(self):
         return f"A version_file was specified for a local dependency, but '{{version}}' not found in the name: {self.name}"
+
+
+class InvalidVersion(Exception):
+    def __init__(self, want):
+        self.want = want
+
+    def __str__(self):
+        return f"Version needs to be an int, float or string, got {self.want}"
+
+
+class Version:
+    def __init__(self, version, without_patch=False):
+        original = version
+
+        if isinstance(version, Version):
+            version = str(version)
+
+        if isinstance(version, (int, float)):
+            version = str(version)
+        elif hasattr(version, "version"):
+            version = version.version
+
+        if isinstance(version, (list, tuple)):
+            while len(version) < 3:
+                version = (*version, 0)
+            version = f"{version[0]}.{version[1]}.{version[2]}"
+
+        if not isinstance(version, str):
+            raise InvalidVersion(original)
+
+        m = regexes["version_string"].match(version)
+        if m is None:
+            raise InvalidVersion(version)
+
+        groups = m.groups()
+        self.major = int(groups[0])
+        self.minor = int(groups[1] or "0")
+        self.patch = int(groups[2] or "0")
+
+        self.without_patch = without_patch
+        if without_patch:
+            self.patch = 0
+
+    @property
+    def version(self):
+        return (self.major, self.minor, self.patch)
+
+    def __str__(self):
+        return f"{self.major}.{self.minor}.{self.patch}"
+
+    def __repr__(self):
+        return f"<Version {str(self)}>"
+
+    def __eq__(self, other):
+        return self._cmp(other) == 0
+
+    def __lt__(self, other):
+        return self._cmp(other) < 0
+
+    def __le__(self, other):
+        return self._cmp(other) <= 0
+
+    def __gt__(self, other):
+        return self._cmp(other) > 0
+
+    def __ge__(self, other):
+        return self._cmp(other) >= 0
+
+    def _cmp(self, other):
+        this = self.version
+        other = Version(other).version
+
+        if self.without_patch:
+            this = this[:2]
+            other = other[:2]
+
+        if this != other:
+            if this < other:
+                return -1
+            else:
+                return 1
+
+        return 0
 
 
 class memoized_property(object):
@@ -116,19 +204,13 @@ class PythonHandler:
     def min_python(self):
         if self._min_python is None:
             return None
-        version = self._min_python
-        if isinstance(self._min_python, (int, float, str)):
-            version = StrictVersion(str(self._min_python))
-        return StrictVersion("{0}.{1}".format(*version.version))
+        return Version(self._min_python, without_patch=True)
 
     @memoized_property
     def max_python(self):
         if self._max_python is None:
             return None
-        version = self._max_python
-        if isinstance(self._max_python, (int, float, str)):
-            version = StrictVersion(str(self._max_python))
-        return StrictVersion("{0}.{1}".format(*version.version))
+        return Version(self._max_python, without_patch=True)
 
     def suitable(self, version):
         if version is None:
@@ -176,7 +258,7 @@ class PythonHandler:
             if fle is not None and location.exists():
                 location.unlink()
 
-    def version_for(self, executable, raise_error=False, zero_patch=False):
+    def version_for(self, executable, raise_error=False, without_patch=False):
         if executable is None:
             return None, None
 
@@ -193,24 +275,21 @@ class PythonHandler:
             version_info = version_info.split("\n")[-1]
 
         try:
-            if zero_patch:
-                vers = "{0}.{1}".format(*json.loads(version_info))
-            else:
-                vers = "{0}.{1}.{2}".format(*json.loads(version_info))
+            vers = ".".join(str(part) for part in json.loads(version_info))
         except (TypeError, ValueError) as error:
             raise Exception(
                 f"Failed to figure out python version\nLooking at:\n=====\n{version_info}\n=====\nError: {error}"
             )
         else:
-            return executable, StrictVersion(vers)
+            return executable, Version(vers, without_patch=without_patch)
 
     def versions(self, starting):
         version = starting
         while version < self.min_python:
-            if version.version[1] > self.min_python.version[1]:
-                version = StrictVersion(f"{version.version[0]+1}")
+            if version.major > self.min_python.major:
+                version = Version(version.major + 1)
             else:
-                version = StrictVersion(f"{version.version[0]+1}.{version.version[1]}")
+                version = Version((version.major + 1, version.minor + 1))
 
         while version >= self.min_python:
             yield "python{0}.{1}".format(*version.version)
@@ -219,9 +298,9 @@ class PythonHandler:
                 if version.version[0] == 0:
                     break
 
-                version = StrictVersion(f"{version.version[0]-1}.{0}")
+                version = Version((version.major - 1))
             else:
-                version = StrictVersion(f"{version.version[0]}.{version.version[1]-1}")
+                version = Version((version.major, version.minor - 1))
 
         version = starting
         while version >= self.min_python:
@@ -230,20 +309,20 @@ class PythonHandler:
             if version.version[0] <= 3:
                 break
 
-            version = StrictVersion(f"{version.version[0] - 1}")
+            version = Version(version.major - 1)
 
         yield "python"
 
     def find(self):
         if self.max_python is None:
-            ex, version = self.version_for(sys.executable, zero_patch=True)
+            ex, version = self.version_for(sys.executable, without_patch=True)
             if self.suitable(version):
                 return sys.executable
 
         max_python = self.min_python
         if self.max_python is None:
-            _, max_python_1 = self.version_for(shutil.which("python3"), zero_patch=True)
-            _, max_python_2 = self.version_for(shutil.which("python"), zero_patch=True)
+            _, max_python_1 = self.version_for(shutil.which("python3"), without_patch=True)
+            _, max_python_2 = self.version_for(shutil.which("python"), without_patch=True)
             found = [
                 m for m in (max_python_1, max_python_2) if m is not None and m > self.min_python
             ]
@@ -257,7 +336,7 @@ class PythonHandler:
         tried = []
         for version in self.versions(max_python):
             tried.append(version)
-            executable, found = self.version_for(shutil.which(version), zero_patch=True)
+            executable, found = self.version_for(shutil.which(version), without_patch=True)
             if self.suitable(found):
                 return executable
 
@@ -309,16 +388,35 @@ class Starter(object):
         is the folder the virtualenv sits in.
 
     min_python_version
-        An optional string or a distutils.version.StrictVersion instance
-        representing the minimum version of python needed for the virtualenv.
+        An int, float, str, tuple or object with "version" of a tuple.
+
+        For example:
+
+        * 3
+        * 3.6
+        * "3.7.13"
+        * (3, 7, 13)
+        * distutils.StrictVersion("3.7.13")
+
+        Represents the minimum version of python needed for the virtualenv.
 
         This will always default to 3.6.
 
     max_python_version
-        An optional string or a distutils.version.StrictVersion instance
-        representing the maximum version of python needed for the virtualenv.
+        An int, float, str, tuple or object with "version" of a tuple.
 
-        This must be a version equal to or greater than min_python_version.
+        For example:
+
+        * 3
+        * 3.6
+        * "3.7.13"
+        * (3, 7, 13)
+        * distutils.StrictVersion("3.7.13")
+
+        Represents the maximum version of python allowed for the virtualenv.
+
+        This is optional but when specified must be a version equal to or greater
+        than min_python_version.
 
     Usage::
 
@@ -359,7 +457,7 @@ class Starter(object):
         if self.max_python is not None and self.min_python > self.max_python:
             raise Exception("min_python_version must be less than max_python_version")
 
-        if self.min_python < StrictVersion("3.6"):
+        if self.min_python < Version(3.6):
             raise Exception("Only support python3.6 and above")
 
     @memoized_property
@@ -663,8 +761,10 @@ class manager:
 
         name = name.format(version=version)
         if with_tests:
-            groups = re.match("([^=><]+)(.*)", name).groups()
-            name = f"{groups[0]}[tests]{''.join(groups[1:])}"
+            m = regexes["version_specifier"].match(name)
+            if m:
+                groups = m.groups()
+                name = f"{groups[0]}[tests]{''.join(groups[1:])}"
 
         dep = f"{Path(path).resolve().absolute().as_uri()}#egg={name}"
 
@@ -681,9 +781,7 @@ class manager:
     @property
     def venv_folder_name(self):
         if self._venv_folder_name is None:
-            if not isinstance(self.program, str) or not re.match(
-                "([a-zA-Z]+(0-9)*)+", self.program
-            ):
+            if not isinstance(self.program, str) or not regexes["ascii"].match(self.program):
                 self._venv_folder_name = ".venv"
             else:
                 self._venv_folder_name = f".{self.program}"
@@ -754,16 +852,35 @@ def ignite(
         is the folder the virtualenv sits in.
 
     min_python_version
-        An optional string or a distutils.version.StrictVersion instance
-        representing the minimum version of python needed for the virtualenv.
+        An int, float, str, tuple or object with "version" of a tuple.
+
+        For example:
+
+        * 3
+        * 3.6
+        * "3.7.13"
+        * (3, 7, 13)
+        * distutils.StrictVersion("3.7.13")
+
+        Represents the minimum version of python needed for the virtualenv.
 
         This will always default to 3.6.
 
     max_python_version
-        An optional string or a distutils.version.StrictVersion instance
-        representing the maximum version of python needed for the virtualenv.
+        An int, float, str, tuple or object with "version" of a tuple.
 
-        This must be a version equal to or greater than min_python_version.
+        For example:
+
+        * 3
+        * 3.6
+        * "3.7.13"
+        * (3, 7, 13)
+        * distutils.StrictVersion("3.7.13")
+
+        Represents the maximum version of python allowed for the virtualenv.
+
+        This is optional but when specified must be a version equal to or greater
+        than min_python_version.
     """
     m = manager(program).place_venv_in(venv_folder).min_python(min_python_version or "3.6")
 

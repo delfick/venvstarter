@@ -53,7 +53,8 @@ describe "PythonHandler":
                 3.6, 3.8, 3.9, python3=3.6, python=3.6, mock_sys=3.6
             ):
                 with pytest.raises(
-                    Exception, match="Couldn't find a suitable python!\nWanted between 3.7 and 3.7"
+                    Exception,
+                    match="Couldn't find a suitable python!\nWanted between 3.7.0 and 3.7.0",
                 ):
                     PythonHandler("3.7", None).find()
 
@@ -62,3 +63,7 @@ describe "PythonHandler":
                 3.6, 3.8, 3.9, python3=3.9, python=3.6, mock_sys=3.9
             ):
                 PythonHandler("3.7", "3.8").find() == pytest.helpers.pythons[3.8]
+
+        it "works when there is only one version":
+            with pytest.helpers.PATH.configure(3.7, python3=3.7, python=3.7, mock_sys=3.7):
+                PythonHandler(3.7, 3.7).find() == pytest.helpers.pythons[3.7]

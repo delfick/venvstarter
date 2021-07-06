@@ -1,5 +1,4 @@
 from venvstarter import PythonHandler, FailedToGetOutput
-from distutils.version import StrictVersion
 from contextlib import contextmanager
 from textwrap import dedent
 from unittest import mock
@@ -113,7 +112,7 @@ class PythonsFinder:
                 PythonHandler().run_command(python_exe, "import venvstarter", cwd=tmpdir)
         except FailedToGetOutput:
             subprocess.run(
-                [str(python_exe), "-m", "pip", "install", str(this_dir.parent)],
+                [str(python_exe), "-m", "pip", "install", "-e", str(this_dir.parent)],
                 check=True,
             )
 
@@ -231,9 +230,8 @@ class PATH:
 
 
 def assertPythonVersion(python_exe, version):
-    want = StrictVersion(version)
-    _, got = PythonHandler().version_for(python_exe, raise_error=True)
-    assert want.version[:2] == got.version[:2], (want, got)
+    _, got = PythonHandler().version_for(python_exe, raise_error=True, without_patch=True)
+    assert got == version, (got, version)
 
 
 def write_script(func, args="", *, filename, exe=None, prepare_venv=False):
@@ -252,8 +250,10 @@ def write_script(func, args="", *, filename, exe=None, prepare_venv=False):
         )
 
     with open(filename) as fle:
-        print(fle.read())
-        print("=" * 20)
+        print(file=sys.stderr)
+        print(f">>CONFTEST: {filename}\n{fle.read()}", file=sys.stderr)
+        print("<<CONFTEST", file=sys.stderr)
+        print(file=sys.stderr)
 
     os.chmod(filename, 0o755)
 
