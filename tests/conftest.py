@@ -280,6 +280,24 @@ def make_script(func, args="", exe=None, prepare_venv=False):
             shutil.rmtree(directory)
 
 
+def get_output(venvstarter_script_filename, *args):
+    try:
+        output = (
+            subprocess.check_output(
+                list(PythonHandler().with_shebang(venvstarter_script_filename, *args)),
+                stderr=subprocess.PIPE,
+            )
+            .strip()
+            .decode()
+        )
+    except subprocess.CalledProcessError as error:
+        stde = ""
+        if error.stderr:
+            stde = error.stderr.decode()
+        assert False, f"Failed to run command ({venvstarter_script_filename}, {args}): {stde}"
+    return output
+
+
 class DirectoryCreator:
     def __init__(self):
         self.files = {}
@@ -310,24 +328,6 @@ class DirectoryCreator:
             shutil.rmtree(self.path)
             del self.path
 
-    def output(self, venvstarter_script_filename, *args):
-        assert hasattr(self, "path")
-        try:
-            output = (
-                subprocess.check_output(
-                    list(PythonHandler().with_shebang(venvstarter_script_filename, *args)),
-                    stderr=subprocess.PIPE,
-                )
-                .strip()
-                .decode()
-            )
-        except subprocess.CalledProcessError as error:
-            stde = ""
-            if error.stderr:
-                stde = error.stderr.decode()
-            assert False, f"Failed to run command ({venvstarter_script_filename}, {args}): {stde}"
-        return output
-
 
 made_venvs = None
 
@@ -356,6 +356,7 @@ def pytest_configure(config):
         mv = made_venvs
 
     pythons = PythonsFinder(mv).find()
+    pytest.helpers.register(get_output)
     pytest.helpers.register(make_script)
     pytest.helpers.register(write_script)
     pytest.helpers.register(DirectoryCreator, name="directory_creator")

@@ -517,13 +517,23 @@ class Starter(object):
         if os.environ.get("VENVSTARTER_ONLY_MAKE_VENV") == "1":
             return
         env = dict(os.environ)
+
+        home = os.path.expanduser("~")
         venv_parent = os.path.dirname(self.venv_location)
         if self.env is not None:
             normalised = {}
-            for k, v in self.env.items():
-                if not isinstance(v, (list, tuple)):
-                    v = [v]
-                normalised[k] = os.path.join(*[vv.format(venv_parent=venv_parent) for vv in v])
+
+            ev = self.env
+            if isinstance(ev, dict):
+                ev = [(None, ev)]
+
+            for here, vv in ev:
+                for k, v in vv.items():
+                    if not isinstance(v, (list, tuple)):
+                        v = [v]
+                    normalised[k] = os.path.join(
+                        *[vv.format(here=here, home=home, venv_parent=venv_parent) for vv in v]
+                    )
 
             env.update(normalised)
 
@@ -568,7 +578,7 @@ class NotSpecified:
 
 class VenvManager:
     def __init__(self):
-        self._env = {}
+        self._env = []
         self._deps = []
         self._max_python = None
         self._min_python = None
@@ -644,7 +654,8 @@ class VenvManager:
         return self
 
     def add_env(self, **env):
-        self._env.update(env)
+        here = os.path.abspath(os.path.dirname(inspect.currentframe().f_back.f_code.co_filename))
+        self._env.append((here, env))
         return self
 
     def run(self, program=None):
