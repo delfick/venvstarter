@@ -234,20 +234,24 @@ def assertPythonVersion(python_exe, version):
     assert got == version, (got, version)
 
 
-def write_script(func, args="", *, filename, exe=None, prepare_venv=False):
+def write_script(func, args="", *, filename, exe=None, prepare_venv=False, decorator=None):
     script = dedent(inspect.getsource(func))
 
+    if decorator is not None:
+        decorator = dedent(inspect.getsource(decorator))
+
     with open(filename, "w") as fle:
-        fle.write(
-            "\n".join(
-                [
-                    f"#!{exe or sys.executable}",
-                    "import sys",
-                    script,
-                    f"script({args})",
-                ]
-            )
-        )
+        lines = [f"#!{exe or sys.executable}", "import sys"]
+
+        if decorator is not None:
+            lines.append(decorator)
+            lines.append(f"@decorator({args})")
+            lines.append(script)
+        else:
+            lines.append(script)
+            lines.append(f"script({args})")
+
+        fle.write("\n".join(lines))
 
     with open(filename) as fle:
         print(file=sys.stderr)
@@ -269,12 +273,19 @@ def write_script(func, args="", *, filename, exe=None, prepare_venv=False):
 
 
 @contextmanager
-def make_script(func, args="", exe=None, prepare_venv=False):
+def make_script(func, args="", exe=None, prepare_venv=False, decorator=None):
     directory = None
     try:
         directory = Path(tempfile.mkdtemp())
         location = directory / "starter"
-        write_script(func, args=args, exe=exe, prepare_venv=prepare_venv, filename=location)
+        write_script(
+            func,
+            args=args,
+            exe=exe,
+            prepare_venv=prepare_venv,
+            filename=location,
+            decorator=decorator,
+        )
         yield location
     finally:
         if directory and directory.exists():

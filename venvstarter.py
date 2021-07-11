@@ -373,7 +373,7 @@ class Starter(object):
         If the program is given as a list, then we `os.execve(result[0], result + args, env)`
 
         If the program is given as a function, that function is provided the location to
-        the python in the virtualenv. If the function returns `None` then venvstarter will
+        the virtualenv. If the function returns `None` then venvstarter will
         do nothing more. Otherwise if it will continue as if the program was the result of
         the function all along.
 
@@ -471,7 +471,7 @@ class Starter(object):
 
         return (Path(folder) / self.venv_folder_name).absolute()
 
-    def venv_script(self, name):
+    def venv_script(self, name, default=None):
         if os.name == "nt":
             location = self.venv_location / "Scripts" / name
         else:
@@ -484,6 +484,9 @@ class Starter(object):
             exe = location.with_suffix(".exe")
             if exe.exists():
                 return exe
+
+        if default is not None:
+            return default
 
         raise Exception(
             "\n".join(
@@ -591,18 +594,25 @@ class Starter(object):
             if ret != 0:
                 raise Exception("Couldn't install the requirements")
 
-    def determine_command(self):
+    def determine_command(self, args):
         program = self.program
         if callable(self.program):
-            program = self.program(self.venv_python)
+            program = self.program(self.venv_location, args)
             if program is None:
                 return
 
         if program is None:
-            return [self.venv_python]
-        elif isinstance(program, str):
+            if args:
+                program = list(args)
+                args.clear()
+            else:
+                return
+
+        if isinstance(program, str):
             return [self.venv_script(program)]
         elif isinstance(program, list):
+            if program:
+                program = [self.venv_script(program[0], default=program[0]), *program[1:]]
             return program
         else:
             raise Exception(f"Not sure what to do with this program: {program}")
@@ -648,19 +658,21 @@ class Starter(object):
         if os.environ.get("VENVSTARTER_ONLY_MAKE_VENV") == "1":
             return
 
-        cmd = self.determine_command()
-        if not cmd:
+        cmd = self.determine_command(args)
+        if cmd is None:
             return
+
+        cmd = [*cmd, *(args or ())]
 
         env = self.env_for_program()
 
         if os.name == "nt":
-            cmd = [str(q) for q in Shebang(*cmd, *args).produce()]
+            cmd = [str(q) for q in Shebang(*cmd).produce()]
             p = subprocess.run(cmd, env=env)
             sys.exit(p.returncode)
 
         try:
-            os.execve(cmd[0], cmd + args, env)
+            os.execve(cmd[0], cmd, env)
         except OSError as error:
             sys.exit(error)
 
