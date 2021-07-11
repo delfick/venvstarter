@@ -38,7 +38,7 @@ import sys
 import os
 import re
 
-VERSION = "0.8.1"
+VERSION = "0.9.0"
 
 regexes = {
     "version_specifier": re.compile(r"([^=><]+)(.*)"),
