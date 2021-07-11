@@ -3,11 +3,12 @@
 import pathlib
 import runpy
 
-manager = runpy.run_path(pathlib.Path(__file__).parent / ".." / "venvstarter.py")["manager"]
+manager = runpy.run_path(pathlib.Path(__file__).parent / ".." / "venvstarter.py")["manager"]("sphinx-build")
 
 manager.add_requirements_file("{here}", "requirements.txt")
 manager.add_local_dep(
     "{here}", "..", name="venvstarter=={version}", version_file=["venvstarter.py"]
 )
 
-manager.min_python(3.6).run("sphinx-build")
+manager.min_python(3.6)
+manager.run()

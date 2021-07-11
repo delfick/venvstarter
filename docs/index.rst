@@ -1,11 +1,3 @@
-.. toctree::
-    :hidden:
-
-    new/index
-    new/changelog
-
-.. _venvstarter:
-
 Venvstarter
 ===========
 
@@ -16,79 +8,54 @@ Full documentation at http://venvstarter.readthedocs.io
 Installation
 ------------
 
-Venvstarter is python3 only and I recommend installing using pip::
+venvstarter is python3 only and I recommend installing using pip::
 
     $ python3 -m pip install venvstarter
 
-Why
----
-
-I used to manage this kind of bootstrap script with bash, similar to how I
-manage the virtualenv for the documentation for this project.
-
-The problem with that approach is it becomes difficult to enforce particular
-versions of python and, in particular, multiple dependencies in a way that
-doesn't involve some pretty horrible code. So I made this :)
-
-Api
----
-
-.. automodule:: venvstarter
-
-.. autoclass:: venvstarter.Starter
-
-.. autofunction:: venvstarter.ignite
-
-Changelog
----------
-
-.. _release-0.8.1:
-
-0.8.1
-    * Don't need to import pkg_resources when venvstarter is imported
-    * Don't need pip as a dependency anymore
-
-.. _release-0.8:
-
-0.8
-    * Fix to the python version checks
-
-      * Version checks no longer fail because of using bytes like a str
-      * Changed the check order so pythonx is checked before pythonx.y is checked
-
-.. _release-0.7:
-
-0.7
-    * Fix so that this continues to work with newer versions of pip
-
-Pre 0.7
-    No changelog was kept
-
-Tests
+Usage
 -----
 
-To run the tests you must first create a ``pythons.json`` in the root of your
-checkout of venvstarter that tells the tests where to find each version of
-Python:
+This project exists to bootstrap an environment for a particular program.
+For example running the `harpoon <https://harpoon.readthedocs.io>`_ project.
+To run a version of harpoon, a file can be made that calls out to venvstarter
+to manage a virtualenv with the correct version of harpoon and then call out
+to the ``harpoon`` script that is created.
+
+An example layout would be::
+
+    project/
+        docker/
+            harpoon
+            harpoon.yml
+        ...
+
+Where ``project/docker/harpoon`` is executable and contains:
 
 .. code-block:: python
 
-  {
-    "python3.6": "~/.pyenv/versions/3.6.13/bin/python",
-    "python3.7": "~/.pyenv/versions/3.7.10/bin/python",
-    "python3.8": "~/.pyenv/versions/3.8.10/bin/python",
-    "python3.9": "~/.pyenv/versions/3.9.5/bin/python"
-  }
+    #!/usr/bin/env python3
 
-In this example I'm using pyenv to get copies of each Python. Using pyenv isn't
-a requirement, but it does make it easy! There is nothing in the tests that rely
-on features in any particular version, and so the minor patch of each version is
-irrelevant. All that matters is having some version of 3.6, 3.7, 3.8 and 3.9.
+    (__import__("venvstarter").manager("harpoon")
+        .add_dep("harpoon==0.16.1")
+        .min_python(3.6)
+        .env(HARPOON_CONFIG=("{venv_parent}", "harpoon.yml"))
+        .run()
+        )
 
-I recommend running the tests in a virtualenv. I use virtualenvwrapper for this
-but you can also do a ``python3 -m venv my_venv`` somewhere and use that.
+And running::
 
-Then once you're in a virtualenv::
+    > ./docker/harpoon list
 
-  > python -m pip install -e ".[tests]"
-  > ./test.sh
+Is equivalent to::
+
+    > python3 -m venv ./docker/.harpoon
+    > ./docker/.harpoon/bin/python -m pip install harpoon==0.16.1
+    > HARPOON_CONFIG=./docker/harpoon.yml ./docker/.harpoon/bin/harpoon list
+
+If the virtualenv already exists then it doesn't remake it. If the dependencies
+are already the correct version then pip is not used to install anything.
+
+.. toctree::
+    :hidden:
+
+    changelog
