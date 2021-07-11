@@ -889,7 +889,7 @@ def ignite(
     if env is not None:
         m.add_env(**env)
     if max_python_version is not None:
-        m.max_python_version(max_python_version)
+        m.max_python(max_python_version)
     if venv_folder_name is not None:
         m.named(venv_folder_name)
 
