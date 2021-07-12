@@ -47,6 +47,13 @@ regexes = {
 }
 
 
+def do_format(s, **kwargs):
+    if hasattr(s, "format"):
+        return s.format(**kwargs)
+    else:
+        return str(s).format(**kwargs)
+
+
 class FailedToGetOutput(Exception):
     def __init__(self, error, stderr):
         self.error = error
@@ -632,15 +639,18 @@ class Starter(object):
             for here, vv in ev:
                 for k, v in vv.items():
                     if not isinstance(v, (list, tuple)):
-                        normalised[k] = v.format(
-                            here=str(here), home=str(home), venv_parent=str(venv_parent)
+                        normalised[k] = do_format(
+                            v, here=str(here), home=str(home), venv_parent=str(venv_parent)
                         )
                     else:
                         normalised[k] = str(
                             Path(
                                 *[
-                                    item.format(
-                                        here=str(here), home=str(home), venv_parent=str(venv_parent)
+                                    do_format(
+                                        item,
+                                        here=str(here),
+                                        home=str(home),
+                                        venv_parent=str(venv_parent),
                                     )
                                     for item in v
                                 ]
@@ -732,7 +742,9 @@ class manager:
 
         path = Path(
             *[
-                part.format(here=str(self.here), home=str(home), venv_parent=str(self.venv_folder))
+                do_format(
+                    part, here=str(self.here), home=str(home), venv_parent=str(self.venv_folder)
+                )
                 for part in parts
             ]
         )
@@ -755,7 +767,9 @@ class manager:
 
         path = Path(
             *[
-                part.format(here=str(self.here), home=str(home), venv_parent=str(self.venv_folder))
+                do_format(
+                    part, here=str(self.here), home=str(home), venv_parent=str(self.venv_folder)
+                )
                 for part in parts
             ]
         )
@@ -771,7 +785,7 @@ class manager:
             if "{version}" not in name:
                 raise VersionNotSpecified(name)
 
-        name = name.format(version=version)
+        name = do_format(name, version=version)
         if with_tests:
             m = regexes["version_specifier"].match(name)
             if m:
