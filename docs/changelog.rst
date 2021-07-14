@@ -3,7 +3,7 @@ Changelog
 
 .. _release-0.9.1:
 
-0.9.1 - TBD
+0.9.1 - 14 July 2021
   * Always use shebang
 
 .. _release-0.9.0:
