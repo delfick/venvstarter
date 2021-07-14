@@ -1,9 +1,14 @@
 Changelog
 ---------
 
+.. _release-0.9.1:
+
+0.9.1 - TBD
+  * Always use shebang
+
 .. _release-0.9.0:
 
-0.9.0 - TBD
+0.9.0 - 12 July 2021
   * Python3 only
   * New manager API
   * New docs

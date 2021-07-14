@@ -672,12 +672,11 @@ class Starter(object):
         if cmd is None:
             return
 
-        cmd = [*cmd, *(args or ())]
+        cmd = [str(q) for q in Shebang(*cmd, *(args or ())).produce()]
 
         env = self.env_for_program()
 
         if os.name == "nt":
-            cmd = [str(q) for q in Shebang(*cmd).produce()]
             p = subprocess.run(cmd, env=env)
             sys.exit(p.returncode)
 
