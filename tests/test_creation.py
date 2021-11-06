@@ -1,30 +1,32 @@
 # coding: spec
 
+from venvstarter import Version
 import pytest
 
 pytestmark = pytest.mark.creation_tests
 
 describe "Finding the right version":
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.focus
+    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9, "3.10"])
     it "will always use current version if no max is specified", version:
 
         def script():
-            __import__("venvstarter").manager("python").run()
+            __import__("venvstarter").manager("python").min_python("3.6").run()
 
-        with pytest.helpers.PATH.configure(version, python=3.9, python3=3.9):
+        with pytest.helpers.PATH.configure(version, python="3.10", python3="3.10"):
             exe = pytest.helpers.pythons[version]
             with pytest.helpers.make_script(script, exe=exe, prepare_venv=True) as filename:
                 pytest.helpers.assertPythonVersion(filename, str(version))
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9, "3.10"])
     it "will use the only version available if within min and max", version:
 
         def script(version):
             __import__("venvstarter").manager("python").min_python(version).run()
 
         for use in pytest.helpers.pythons:
-            if use >= version:
+            if Version(use) >= Version(version):
                 with pytest.helpers.PATH.configure(use, python3=use, python=use):
                     exe = pytest.helpers.pythons[use]
                     with pytest.helpers.make_script(

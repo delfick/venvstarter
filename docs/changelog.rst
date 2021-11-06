@@ -1,6 +1,13 @@
 Changelog
 ---------
 
+.. _release-0.10.0:
+
+0.10.0 - TBD
+  * Add Official python3.10 support.
+  * Drop official support for python3.6
+  * The default value for min_python is now python3.7
+
 .. _release-0.9.1:
 
 0.9.1 - 14 July 2021

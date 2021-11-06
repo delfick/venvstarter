@@ -37,7 +37,7 @@ Where ``project/docker/harpoon`` is executable and contains:
 
     (__import__("venvstarter").manager("harpoon")
         .add_dep("harpoon==0.16.1")
-        .min_python(3.6)
+        .min_python(3.7)
         .env(HARPOON_CONFIG=("{venv_parent}", "harpoon.yml"))
         .run()
         )

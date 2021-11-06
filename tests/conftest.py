@@ -11,8 +11,11 @@ import pytest
 import json
 import sys
 import os
+import re
 
 this_dir = Path(__file__).parent
+
+regexes = {"version": re.compile(r"3\.(6|7|8|9|10)")}
 
 
 class Pythons:
@@ -24,17 +27,18 @@ class Pythons:
             yield float(key[len("python") :])
 
     def __getitem__(self, key):
-        if not isinstance(key, float):
+        if not isinstance(key, (float, str)):
             assert (
                 False
-            ), f"Can only get a python location using a float of 3.6, 3.7, etc. Used {key}"
+            ), f"Can only get a python location using a float or string of 3.6, 3.7, etc. Used {key}"
 
-        if int(key) == key:
+        key = str(key)
+        if not regexes["version"].match(key):
             assert (
                 False
-            ), f"Can only get a python location using a float of 3.6, 3.7, etc. Used {key}"
+            ), f"Can only get a python location using a float or string of 3.6, 3.7, etc. Used {key}"
 
-        return self.locations[f"python{key:.1f}"]
+        return self.locations[f"python{key}"]
 
 
 class PythonsFinder:
@@ -139,7 +143,7 @@ class PythonsFinder:
                     return False
 
     def find(self):
-        want = set(["python3.6", "python3.7", "python3.8", "python3.9"])
+        want = set(["python3.6", "python3.7", "python3.8", "python3.9", "python3.10"])
         pythons = self.pythons_json(want)
         for k in want:
             location = self.normalise_python_location(pythons, k)
