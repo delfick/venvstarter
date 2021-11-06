@@ -407,7 +407,7 @@ class Starter(object):
 
         Represents the minimum version of python needed for the virtualenv.
 
-        This will always default to 3.6.
+        This will always default to 3.7.
 
     max_python_version
         An int, float, str, tuple or object with "version" of a tuple.
@@ -455,7 +455,7 @@ class Starter(object):
             self.deps = []
 
         if self.min_python_version is None:
-            self.min_python_version = 3.6
+            self.min_python_version = 3.7
 
         handler = PythonHandler(self.min_python_version, self.max_python_version)
         self.min_python = handler.min_python

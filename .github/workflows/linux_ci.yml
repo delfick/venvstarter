@@ -10,7 +10,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9]
+        python-version: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
       - uses: actions/checkout@v2
@@ -27,7 +27,7 @@ jobs:
         id: python_cache
         uses: actions/cache@v2
         with:
-          key: python3.6.13_3.7.10_3.8.10_3.9.5
+          key: python3.6.13_3.7.10_3.8.10_3.9.5_3.10.0
           path: |
             /opt/hostedtoolcache/pyenv_root
 
@@ -37,10 +37,12 @@ jobs:
           set -e
 
           pyenv --version
+
           pyenv install 3.6.13
           pyenv install 3.7.10
           pyenv install 3.8.10
           pyenv install 3.9.5
+          pyenv install 3.10.0b1
 
           pyenv rehash
 
@@ -53,6 +55,7 @@ jobs:
           V37=$(pyenv whence python3.7)
           V38=$(pyenv whence python3.8)
           V39=$(pyenv whence python3.9)
+          V310=$(pyenv whence python3.10)
 
           ROOT=$(pyenv root)
 
@@ -61,7 +64,8 @@ jobs:
             "python3.6": "$ROOT/versions/$V36/bin/python",
             "python3.7": "$ROOT/versions/$V37/bin/python",
             "python3.8": "$ROOT/versions/$V38/bin/python",
-            "python3.9": "$ROOT/versions/$V39/bin/python"
+            "python3.9": "$ROOT/versions/$V39/bin/python",
+            "python3.10": "$ROOT/versions/$V310/bin/python"
           }
           EOF
 
