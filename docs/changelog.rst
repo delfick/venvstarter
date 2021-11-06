@@ -7,6 +7,7 @@ Changelog
   * Add Official python3.10 support.
   * Drop official support for python3.6
   * The default value for min_python is now python3.7
+  * Will now recreate the venv if the target python no longer exists
 
 .. _release-0.9.1:
 

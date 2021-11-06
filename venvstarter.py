@@ -54,8 +54,28 @@ def do_format(s, **kwargs):
         return str(s).format(**kwargs)
 
 
+class ScriptNotFound(Exception):
+    def __init__(self, location, name):
+        super().__init__()
+        self.name = name
+        self.location = location
+
+    def __str__(self):
+        available = ", ".join(
+            n.name for n in self.location.parent.iterdir() if "." not in n.name and n.exists()
+        )
+        return "\n".join(
+            [
+                "\nCouldn't find the executable!",
+                f"Wanted {self.name}",
+                f"Available is {available}",
+            ]
+        )
+
+
 class FailedToGetOutput(Exception):
     def __init__(self, error, stderr):
+        super().__init__()
         self.error = error
         self.stderr = stderr
 
@@ -65,6 +85,7 @@ class FailedToGetOutput(Exception):
 
 class VersionNotSpecified(Exception):
     def __init__(self, name):
+        super().__init__()
         self.name = name
 
     def __str__(self):
@@ -73,6 +94,7 @@ class VersionNotSpecified(Exception):
 
 class InvalidVersion(Exception):
     def __init__(self, want):
+        super().__init__()
         self.want = want
 
     def __str__(self):
@@ -495,15 +517,7 @@ class Starter(object):
         if default is not None:
             return default
 
-        raise Exception(
-            "\n".join(
-                [
-                    "\nCouldn't find the executable!",
-                    f"Wanted {name}",
-                    f"Available is {location.iterdir()}",
-                ]
-            )
-        )
+        raise ScriptNotFound(location, name)
 
     @memoized_property
     def venv_python(self):
@@ -513,7 +527,12 @@ class Starter(object):
         python_exe = None
         if self.venv_location.exists():
             finder = PythonHandler(self.min_python, self.max_python)
-            _, version_info = finder.version_for(self.venv_python)
+
+            try:
+                _, version_info = finder.version_for(self.venv_python)
+            except ScriptNotFound:
+                version_info = None
+
             if not finder.suitable(version_info):
                 # Make sure we can find a suitable python before we remove existing venv
                 try:
