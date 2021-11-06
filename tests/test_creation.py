@@ -7,7 +7,6 @@ pytestmark = pytest.mark.creation_tests
 
 describe "Finding the right version":
 
-    @pytest.mark.focus
     @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9, "3.10"])
     it "will always use current version if no max is specified", version:
 
