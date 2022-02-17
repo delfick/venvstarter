@@ -12,11 +12,11 @@ setup(
 
     , extras_require =
       { 'tests':
-        [ 'pytest>=6.2.5'
-        , 'noseOfYeti==2.1.0'
+        [ 'pytest>=7.0.1'
+        , 'noseOfYeti==2.3.1'
         , "pytest-parallel==0.1.1"
         , 'rainbow_logging_handler==2.2.2'
-        , "pytest-helpers-namespace==2021.4.29"
+        , "pytest-helpers-namespace==2021.12.29"
         ]
       }
 
