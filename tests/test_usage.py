@@ -146,6 +146,30 @@ describe "Finding the right version":
             ).split("\n")
             assert output[-1] == "yay"
 
+    it "can be used to make sure a dependency isn't binary":
+
+        def script():
+            __import__("venvstarter").manager("python").add_pypi_deps("noy_black").run()
+
+        with pytest.helpers.make_script(script, prepare_venv=True) as filename:
+            output = pytest.helpers.get_output(
+                filename, "-c", "import black; print(black.__file__)"
+            ).split("\n")
+            if not output[-1].endswith(".so"):
+                pytest.skip("black doesn't install as binary on this system")
+
+            def script():
+                __import__("venvstarter").manager("python").add_pypi_deps(
+                    "noy_black"
+                ).add_no_binary("black").run()
+
+            pytest.helpers.write_script(script, prepare_venv=True, filename=filename)
+
+            output = pytest.helpers.get_output(
+                filename, "-c", "import black; print(black.__file__)"
+            ).split("\n")
+            assert not output[-1].endswith(".so")
+
     it "can be used to add environment variables":
 
         def script():

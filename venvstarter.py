@@ -409,6 +409,9 @@ class Starter(object):
     deps
         An optional list of pip dependencies to install into your virtualenv
 
+    no_binary
+        List of deps that must not be installed as binary
+
     env
         An optional dictionary of environment variables to add to the environment
         that the program is run in.
@@ -461,6 +464,7 @@ class Starter(object):
         venv_folder,
         venv_folder_name,
         deps=None,
+        no_binary=None,
         env=None,
         min_python_version=None,
         max_python_version=None,
@@ -468,10 +472,14 @@ class Starter(object):
         self.env = env
         self.deps = deps
         self.program = program
+        self.no_binary = no_binary
         self.venv_folder = venv_folder
         self.venv_folder_name = venv_folder_name
         self.min_python_version = min_python_version
         self.max_python_version = max_python_version
+
+        if self.no_binary is None:
+            self.no_binary = []
 
         if self.deps is None:
             self.deps = []
@@ -563,60 +571,93 @@ class Starter(object):
 
             return True
 
-    def install_deps(self):
+    def check_deps(self):
         deps = []
+
         for dep in self.deps:
             if "#" in dep:
-                deps.append(
-                    dict(arg.split("=", 1) for arg in dep.split("#", 1)[1].split("&"))["egg"]
-                )
-            else:
-                deps.append(dep)
+                dep = dict(arg.split("=", 1) for arg in dep.split("#", 1)[1].split("&"))["egg"]
+
+            deps.append(dep)
+
         deps = json.dumps(deps)
 
+        handler = PythonHandler()
+        question = """
+            import pkg_resources
+            import importlib
+            import sys
+
+            try:
+                pkg_resources.working_set.require({0})
+            except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict) as error:
+                sys.stderr.write(str(error) + "\\n\\n")
+                sys.stderr.flush()
+                raise SystemExit(1)
+
+            for name in {1}:
+                if importlib.import_module(name).__file__.endswith(".so"):
+                    sys.stderr.write(f"{{name}} needs to not be a binary installation\\n\\n")
+                    sys.stderr.flush()
+                    raise SystemExit(1)
+            """.format(
+            deps, self.no_binary
+        )
+        return handler.run_command(self.venv_python, question, check=False).returncode
+
+    def find_deps_to_be_made_not_binary(self):
+        handler = PythonHandler()
+        question = """
+            import importlib
+
+            for name in {0}:
+                try:
+                    if importlib.import_module(name).__file__.endswith(".so"):
+                        print(name)
+                except ImportError:
+                    pass
+            """.format(
+            json.dumps(self.no_binary)
+        )
+        found = handler.run_command(self.venv_python, question, get_output=True).split("\n")
+        return [shlex.quote(name.strip()) for name in found if name.strip()]
+
+    def install_deps(self):
         # Fix a bug whereby the virtualenv has the wrong sys.executable
         env = dict(os.environ)
         if "__PYVENV_LAUNCHER__" in env:
             del env["__PYVENV_LAUNCHER__"]
 
-        def check_deps():
-            handler = PythonHandler()
-            question = """
-                import pkg_resources
-                import sys
-                try:
-                    pkg_resources.working_set.require({0})
-                except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict) as error:
-                    sys.stderr.write(str(error) + "\\n\\n")
-                    sys.stderr.flush()
-                    raise SystemExit(1)
-                """.format(
-                deps
-            )
-            return handler.run_command(self.venv_python, question, check=False).returncode
-
-        ret = check_deps()
+        ret = self.check_deps()
         if ret != 0:
             ret = 1
             reqs = None
             try:
+                to_remove = self.find_deps_to_be_made_not_binary()
+                if to_remove:
+                    cmd = [str(self.venv_python), "-m", "pip", "uninstall", "-y", *to_remove]
+                    subprocess.call(cmd, env=env)
+
                 reqs = tempfile.NamedTemporaryFile(
                     delete=False, suffix="venvstarter_requirements", dir="."
                 )
                 reqs.write("\n".join(str(dep) for dep in self.deps).encode("utf-8"))
+                for name in self.no_binary:
+                    reqs.write(f"\n--no-binary {name}".encode("utf-8"))
                 reqs.close()
 
                 cmd = [str(self.venv_python), "-m", "pip", "install", "-r", reqs.name]
                 ret = subprocess.call(cmd, env=env)
             finally:
-                reqs_loc = Path(reqs.name)
+                if reqs is not None:
+                    reqs_loc = Path(reqs.name)
                 if reqs is not None and reqs_loc.exists():
                     reqs_loc.unlink()
 
             if ret != 0:
                 raise SystemExit(1)
 
-            ret = check_deps()
+            ret = self.check_deps()
             if ret != 0:
                 raise Exception("Couldn't install the requirements")
 
@@ -730,6 +771,7 @@ class manager:
 
         self._env = []
         self._deps = []
+        self._no_binary = []
         self._max_python = None
         self._min_python = None
         self._venv_folder = NotSpecified
@@ -753,6 +795,10 @@ class manager:
 
     def add_pypi_deps(self, *deps):
         self._deps.extend(deps)
+        return self
+
+    def add_no_binary(self, *no_binary):
+        self._no_binary.extend(no_binary)
         return self
 
     def add_requirements_file(self, *parts):
@@ -844,6 +890,7 @@ class manager:
             self.venv_folder_name,
             env=self._env,
             deps=self._deps,
+            no_binary=self._no_binary,
             min_python_version=self._min_python,
             max_python_version=self._max_python,
         ).run()
