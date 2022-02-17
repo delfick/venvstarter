@@ -561,13 +561,18 @@ class Starter(object):
             print(f"Using: {python_exe}", file=sys.stderr)
             print(file=sys.stderr)
 
+            with_pip = os.name != "nt"
+
             PythonHandler().run_command(
                 python_exe,
                 f"""
             import venv
-            venv.create({json.dumps(str(self.venv_location))}, with_pip=True, symlinks=True)
+            venv.create({json.dumps(str(self.venv_location))}, with_pip={with_pip}, symlinks=True)
             """,
             )
+
+            if not with_pip:
+                subprocess.run([str(self.venv_python), "-m", "ensurepip"], check=True)
 
             return True
 

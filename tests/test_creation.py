@@ -8,7 +8,7 @@ pytestmark = pytest.mark.creation_tests
 
 describe "Finding the right version":
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9, "3.10"])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10"])
     it "will always use current version if no max is specified", version:
 
         def script():
@@ -19,7 +19,7 @@ describe "Finding the right version":
             with pytest.helpers.make_script(script, exe=exe, prepare_venv=True) as filename:
                 pytest.helpers.assertPythonVersion(filename, str(version))
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9, "3.10"])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10"])
     it "will use the only version available if within min and max", version:
 
         def script(version):

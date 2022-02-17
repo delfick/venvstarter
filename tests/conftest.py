@@ -81,13 +81,15 @@ class PythonsFinder:
 
     def make_venv(self, python_exe, version, errors):
         venv_location = self.made_venvs / f"venv{version}"
+        created = False
         if not venv_location.exists():
+            created = True
             PythonHandler().run_command(
                 python_exe,
                 f"""
                 import json
                 import venv
-                venv.create({json.dumps(str(venv_location))}, with_pip=True)
+                venv.create({json.dumps(str(venv_location))}, with_pip=False)
             """,
             )
 
@@ -95,6 +97,9 @@ class PythonsFinder:
             py = venv_location / "Scripts" / "python.exe"
         else:
             py = venv_location / "bin" / "python"
+
+        if created:
+            subprocess.run([str(py), "-m", "ensurepip"], check=True)
 
         if not py.exists():
             if errors:
