@@ -3,7 +3,7 @@ Changelog
 
 .. _release-0.11.0:
 
-0.11.0 - TBD
+0.11.0 - 17 Feburary 2022
    * Ability to say some packages should not be installed as binary
 
 .. _release-0.10.0:
