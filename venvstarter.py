@@ -382,13 +382,14 @@ class PythonHandler:
 
 class Starter(object):
     """
-    The main class that knows how to manage the virtualenv
+    The main class that knows how to manage the virtualenv. It is recommended
+    that :class:`manager` is used instead of directly using this class.
 
     venv_folder
         A folder that the virtualenv will sit in.
 
         Note that if you pass in the location of a file, it will use the folder
-        that file sits in. This is convenient so you can just pass in __file__
+        that file sits in. This is convenient so you can just pass in ``__file__``
         from your bootstrap script.
 
     program
@@ -399,10 +400,10 @@ class Starter(object):
         If the program is given as a string, we invoke it from the scripts in the
         virtualenv.
 
-        If the program is given as a list, then we `os.execve(result[0], result + args, env)`
+        If the program is given as a list, then we ``os.execve(result[0], result + args, env)``
 
         If the program is given as a function, that function is provided the location to
-        the virtualenv. If the function returns `None` then venvstarter will
+        the virtualenv. If the function returns ``None`` then venvstarter will
         do nothing more. Otherwise if it will continue as if the program was the result of
         the function all along.
 
@@ -410,7 +411,9 @@ class Starter(object):
         An optional list of pip dependencies to install into your virtualenv
 
     no_binary
-        List of deps that must not be installed as binary
+        List of deps that must not be installed as binary. It will identify if
+        the dependency has already been installed as a binary and reinstall it
+        to be installed from source.
 
     env
         An optional dictionary of environment variables to add to the environment
@@ -452,10 +455,22 @@ class Starter(object):
 
     Usage::
 
-        Starter(*args, **kwargs).ignite()
+        Starter(*args, **kwargs).run()
 
-    .. note:: you may pass a custom args array into ``ignite`` and it will use
+    .. note:: you may pass a custom args array into ``run`` and it will use
       that instead of sys.argv
+
+    There are also two environment variables that can change what this class does:
+
+    VENVSTARTER_ONLY_MAKE_VENV=1
+        This will make the class ensure the virtualenv exists and has the correct
+        versions of specified dependencies but will then not do anything with that
+        virtualenv
+
+    VENV_STARTER_CHECK_DEPS=0
+        This will make the class not check if the dependencies in the virtualenv
+        are correct. This increases startup time at the cost of potentially
+        having the wrong versions of dependencies in the virtualenv.
     """
 
     def __init__(
@@ -767,7 +782,27 @@ class NotSpecified:
 
 
 class manager:
+    """
+    This is the main entry point to venvstarter. It provides a chained API for
+    configuring a venvstarter Starter class and then running it.
+
+    Usage looks like:
+
+    .. code-block:: python
+
+        (__import__("venvstarter").manager("black")
+            .add_pypi_deps("noy_black==0.3.0")
+            .run()
+            )
+    """
+
     def __init__(self, program, here=None):
+        """
+        See :class:`Starter` for valid values for program.
+
+        ``here`` will default to the absolute path to the directory your script
+        lives in.
+        """
         if here is None:
             here = Path(inspect.currentframe().f_back.f_code.co_filename).parent.absolute()
 
@@ -783,30 +818,70 @@ class manager:
         self._venv_folder_name = None
 
     def place_venv_in(self, location):
+        """
+        This will configure the virtualenv to exist in the provided location.
+        """
         self._venv_folder = Path(location)
         return self
 
     def min_python(self, version):
+        """
+        This will set the minimum version of python as provided. See :class:`Starter`
+        """
         self._min_python = version
         return self
 
     def max_python(self, version):
+        """
+        This will set the maximum version of python as provided. See :class:`Starter`
+        """
         self._max_python = version
         return self
 
     def named(self, name):
+        """
+        This will set the name of the virtualenv folder
+        """
         self._venv_folder_name = name
         return self
 
     def add_pypi_deps(self, *deps):
+        """
+        This will add to the list of dependencies from pypi. This method may
+        be called multiple times to add many dependencies.
+        """
         self._deps.extend(deps)
         return self
 
     def add_no_binary(self, *no_binary):
+        """
+        This will register more dependencies that must be installed from source.
+        See :class:`Starter`.
+        """
         self._no_binary.extend(no_binary)
         return self
 
     def add_requirements_file(self, *parts):
+        """
+        This adds a single requirements file. The strings you provide will be
+        joined together to form one path. Each string will be formatted with:
+
+        here
+            The location of the directory your script exists in
+
+        home
+            The location of your current user's home folder
+
+        venv_parent
+            The location of the folder the virtualenv will sit in.
+
+
+        For example:
+
+        .. code-block:: python
+
+            manager(...).add_requirements_file("{here}", "..", "requirements.txt")
+        """
         home = Path.home()
 
         path = Path(
@@ -832,6 +907,33 @@ class manager:
         return self
 
     def add_local_dep(self, *parts, editable=True, version_file=None, with_tests=False, name):
+        """
+        Adds a dependency that is local to your script. The path to where a
+        folder where a ``setup.py`` can be found is provided as parts of a file
+        that are joined together. Formatted into each part is ``here``, ``home``
+        and ``venv_parent`` just like the parts in :meth:`add_requirements_file`.
+
+        editable
+            This is the same as saying ``pip install -e {path}``. This is how
+            pip is told to install the dependency as a symlink rather than as
+            a static copy of the code at the time of installation.
+
+        version_file
+            This needs to be a tuple of strings. These are joined as a path from
+            the source code of your dependency. This must be a file containing
+            a variable called ``VERSION`` that is a version number for the
+            dependency. Venvstarter will reinstall the local dependency if this
+            number changes, which allows any new sub dependencies to be found.
+
+        with_tests
+            This is equivalent to saying ``pip install "{path}[tests]"`` and
+            will tell pip to also install any dependencies found in the ``tests``
+            section of the ``extra_requires`` in setup.py.
+
+        name
+            This is used to tell pip the name of the dependency that is installed
+            from this location.
+        """
         home = Path.home()
 
         path = Path(
@@ -870,11 +972,21 @@ class manager:
         return self
 
     def add_env(self, **env):
+        """
+        Updates the dictionary of environment variables to run the program with
+        """
         self._env.append((self.here, env))
         return self
 
     @property
     def venv_folder_name(self):
+        """
+        Returns the name of the virtualenv folder.
+
+        If it has been explicitly set, then that value is returned. Otherwise if
+        the program is a string then it is returned with a prefixed dot, otherwise
+        it uses ``.venv``.
+        """
         if self._venv_folder_name is None:
             if not isinstance(self.program, str) or not regexes["ascii"].match(self.program):
                 self._venv_folder_name = ".venv"
@@ -884,11 +996,19 @@ class manager:
 
     @property
     def venv_folder(self):
+        """
+        The folder the virtualenv will sit in. If this has explicitly set, then
+        that is returned, otherwise the value for ``here`` is returned.
+        """
         if self._venv_folder is NotSpecified:
             self._venv_folder = self.here
         return self._venv_folder
 
     def run(self):
+        """
+        This creates the :class:`Starter` instance with the specified
+        configuration and calls run on that.
+        """
         Starter(
             self.program,
             self.venv_folder,
@@ -919,7 +1039,7 @@ def ignite(
         A folder that the virtualenv will sit in.
 
         Note that if you pass in the location of a file, it will use the folder
-        that file sits in. This is convenient so you can just pass in __file__
+        that file sits in. This is convenient so you can just pass in ``__file__``
         from your bootstrap script.
 
     program
@@ -930,10 +1050,10 @@ def ignite(
         If the program is given as a string, we invoke it from the scripts in the
         virtualenv.
 
-        If the program is given as a list, then we `os.execve(result[0], result + args, env)`
+        If the program is given as a list, then we ``os.execve(result[0], result + args, env)``
 
         If the program is given as a function, that function is provided the location to
-        the python in the virtualenv. If the function returns `None` then venvstarter will
+        the python in the virtualenv. If the function returns ``None`` then venvstarter will
         do nothing more. Otherwise if it will continue as if the program was the result of
         the function all along.
 
