@@ -58,5 +58,6 @@ are already the correct version then pip is not used to install anything.
 .. toctree::
     :hidden:
 
+    features
     api
     changelog
