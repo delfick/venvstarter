@@ -21,8 +21,32 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Get pyenv
+        shell: bash
         run: |
           python3 -m pip install pyenv-win --target $HOME\\.pyenv
+
+      - name: Update system pip
+        shell: bash
+        run: |
+          python3 -m pip install pip>=23 --upgrade
+
+      - name: Install pip into project venv
+        shell: bash
+        run: |
+          # TODO: Make it so venvstarter has option to ensure pip before checking deps
+          python3 -c "__import__('venv').create(str(__import__('pathlib').Path('tools', '.python').resolve()), with_pip=False)"
+          tools/.python/Scripts/python.exe -m ensurepip
+          tools/.python/Scripts/python.exe -m pip install pip>=23 --upgrade
+
+      - name: Install venvstarter in venv
+        shell: bash
+        run: |
+          VENVSTARTER_ONLY_MAKE_VENV=1 ./test.sh
+
+      - name: Install venvstarter in system
+        shell: bash
+        run: |
+          python3 -m pip install -e '.[tests]'
 
       - name: Cache Python
         id: python_cache
@@ -88,11 +112,6 @@ jobs:
         shell: bash
         run: |
           cat pythons.json
-
-      - name: Install venvstarter
-        shell: bash
-        run: |
-          python3 -m pip install -e ".[tests]"
 
       - name: Run the tests
         shell: bash

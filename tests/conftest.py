@@ -103,6 +103,8 @@ class PythonsFinder:
         if created:
             subprocess.run([str(py), "-m", "ensurepip"], check=True)
 
+        subprocess.run([str(py), "-m", "pip", "install", "pip>=23", "--upgrade"], check=True)
+
         if not py.exists():
             if errors:
                 if venv_location.exists():
@@ -122,10 +124,6 @@ class PythonsFinder:
             with tempfile.TemporaryDirectory() as tmpdir:
                 PythonHandler().run_command(python_exe, "import venvstarter", cwd=tmpdir)
         except FailedToGetOutput:
-            subprocess.run(
-                [str(python_exe), "-m", "pip", "install", "pip", "--upgrade"],
-                check=True,
-            )
             subprocess.run(
                 [str(python_exe), "-m", "pip", "install", "-e", str(this_dir.parent)],
                 check=True,
