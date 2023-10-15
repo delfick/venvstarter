@@ -168,6 +168,10 @@ VENVSTARTER_ONLY_MAKE_VENV=1
     has correct dependencies and then exit before doing anything with the
     virtualenv.
 
+VENVSTARTER_UPGRADE_PIP=0
+    This will make sure that pip is not ensured to be greater than 23 before
+    requirements are installed
+
 .. _local_deps:
 
 Installing local dependencies

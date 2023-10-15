@@ -29,18 +29,15 @@ jobs:
           pyenv install --list
 
       - name: Update system pip
+        shell: bash
         run: |
           python3 -m pip install pip>=23 --upgrade
-
-      - name: Install pip into project venv
-        run: |
-          VENVSTARTER_ONLY_MAKE_VENV=1 VENV_STARTER_CHECK_DEPS=0 ./test.sh
-          ./tools/.python/bin/python -m pip install pip>=23 --upgrade
 
       - name: Install venvstarter in venv
         shell: bash
         run: |
           VENVSTARTER_ONLY_MAKE_VENV=1 ./test.sh
+          tools/.python/bin/python -m pip install pip>=23 --upgrade
 
       - name: Install venvstarter in system
         shell: bash

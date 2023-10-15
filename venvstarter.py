@@ -471,6 +471,10 @@ class Starter(object):
         This will make the class not check if the dependencies in the virtualenv
         are correct. This increases startup time at the cost of potentially
         having the wrong versions of dependencies in the virtualenv.
+
+    VENVSTARTER_UPGRADE_PIP=0
+        This will make sure that pip is not ensured to be greater than 23 before
+        requirements are installed
     """
 
     def __init__(
@@ -591,16 +595,21 @@ class Starter(object):
 
             return True
 
-    def check_deps(self):
-        deps = []
+    def check_deps(self, deps=None, check_no_binary=True):
+        deps_to_use = []
+        deps = self.deps if deps is None else deps
 
-        for dep in self.deps:
+        for dep in deps:
             if "#" in dep:
                 dep = dict(arg.split("=", 1) for arg in dep.split("#", 1)[1].split("&"))["egg"]
 
-            deps.append(dep)
+            deps_to_use.append(dep)
 
-        deps = json.dumps(deps)
+        no_binary = []
+        if check_no_binary:
+            no_binary = self.no_binary
+
+        deps = json.dumps(deps_to_use)
 
         handler = PythonHandler()
         question = """
@@ -621,7 +630,7 @@ class Starter(object):
                     sys.stderr.flush()
                     raise SystemExit(1)
             """.format(
-            deps, self.no_binary
+            deps, no_binary
         )
         return handler.run_command(self.venv_python, question, check=False).returncode
 
@@ -642,28 +651,36 @@ class Starter(object):
         found = handler.run_command(self.venv_python, question, get_output=True).split("\n")
         return [shlex.quote(name.strip()) for name in found if name.strip()]
 
-    def install_deps(self):
+    def install_deps(self, deps=None, check_no_binary=True):
+        if deps is None:
+            deps = self.deps
+
         # Fix a bug whereby the virtualenv has the wrong sys.executable
         env = dict(os.environ)
         if "__PYVENV_LAUNCHER__" in env:
             del env["__PYVENV_LAUNCHER__"]
 
-        ret = self.check_deps()
+        ret = self.check_deps(deps=deps, check_no_binary=check_no_binary)
         if ret != 0:
             ret = 1
             reqs = None
             try:
-                to_remove = self.find_deps_to_be_made_not_binary()
-                if to_remove:
-                    cmd = [str(self.venv_python), "-m", "pip", "uninstall", "-y", *to_remove]
-                    subprocess.call(cmd, env=env)
+                if check_no_binary:
+                    to_remove = self.find_deps_to_be_made_not_binary()
+                    if to_remove:
+                        cmd = [str(self.venv_python), "-m", "pip", "uninstall", "-y", *to_remove]
+                        subprocess.call(cmd, env=env)
 
                 reqs = tempfile.NamedTemporaryFile(
                     delete=False, suffix="venvstarter_requirements", dir="."
                 )
-                reqs.write("\n".join(str(dep) for dep in self.deps).encode("utf-8"))
-                for name in self.no_binary:
-                    reqs.write(f"\n--no-binary {name}".encode("utf-8"))
+                for dep in deps:
+                    reqs.write(f"\n{dep}".encode("utf-8"))
+
+                if check_no_binary:
+                    for dep in self.no_binary:
+                        reqs.write(f"\n--no-binary {dep}".encode("utf-8"))
+
                 reqs.close()
 
                 cmd = [str(self.venv_python), "-m", "pip", "install", "-r", reqs.name]
@@ -677,7 +694,7 @@ class Starter(object):
             if ret != 0:
                 raise SystemExit(1)
 
-            ret = self.check_deps()
+            ret = self.check_deps(deps=deps, check_no_binary=check_no_binary)
             if ret != 0:
                 raise Exception("Couldn't install the requirements")
 
@@ -770,6 +787,9 @@ class Starter(object):
             args = sys.argv[1:]
 
         made = self.make_virtualenv()
+
+        if os.environ.get("VENVSTARTER_UPGRADE_PIP", None) != "0":
+            self.install_deps(deps=["pip>=23"], check_no_binary=False)
 
         if made or os.environ.get("VENV_STARTER_CHECK_DEPS", None) != "0":
             self.install_deps()

@@ -30,17 +30,13 @@ jobs:
         run: |
           python3 -m pip install pip>=23 --upgrade
 
-      - name: Install pip into project venv
+      - name: Install venvstarter in venv
         shell: bash
         run: |
           # TODO: Make it so venvstarter has option to ensure pip before checking deps
           python3 -c "__import__('venv').create(str(__import__('pathlib').Path('tools', '.python').resolve()), with_pip=False)"
           tools/.python/Scripts/python.exe -m ensurepip
           tools/.python/Scripts/python.exe -m pip install pip>=23 --upgrade
-
-      - name: Install venvstarter in venv
-        shell: bash
-        run: |
           VENVSTARTER_ONLY_MAKE_VENV=1 ./test.sh
 
       - name: Install venvstarter in system
