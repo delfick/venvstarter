@@ -13,10 +13,10 @@ jobs:
         python-version: [3.7, 3.8, 3.9, "3.10"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -28,7 +28,7 @@ jobs:
         id: python_cache
         uses: actions/cache@v2
         with:
-          key: python3.6.8_3.7.9_3.8.10_3.9.6_3.10.0
+          key: python3.6.8_3.7.9_3.8.10_3.9.6_3.10.13_3.11.6
           path: |
             ~/.pyenv
 
@@ -51,7 +51,8 @@ jobs:
           pyenv install 3.7.9
           pyenv install 3.8.10
           pyenv install 3.9.6
-          pyenv install 3.10.0b3
+          pyenv install 3.10.13
+          pyenv install 3.11.6
 
           pyenv rehash
 
@@ -67,7 +68,8 @@ jobs:
           V37=$(pyenv whence python3.7)
           V38=$(pyenv whence python3.8)
           V39=$(pyenv whence python3.9)
-          V310="3.10.0b3"
+          V310=$(pyenv whence python3.10)
+          V311=$(pyenv whence python3.11)
 
           cat <<EOF > pythons.json
           {
@@ -76,6 +78,7 @@ jobs:
             "python3.8": "~/.pyenv/pyenv-win/versions/$V38/python.exe",
             "python3.9": "~/.pyenv/pyenv-win/versions/$V39/python.exe",
             "python3.10": "~/.pyenv/pyenv-win/versions/$V310/python.exe"
+            "python3.11": "~/.pyenv/pyenv-win/versions/$V311/python.exe"
           }
           EOF
 

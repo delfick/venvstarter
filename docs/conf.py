@@ -1,4 +1,12 @@
-extensions = ["sphinx.ext.autodoc", "sphinx_rtd_theme"]
+import pathlib
+import sys
+
+sys.path.append(str(pathlib.Path(__file__).parent))
+
+extensions = [
+    "sphinx.ext.autodoc",
+    "sphinx_rtd_theme",
+]
 
 html_theme = "sphinx_rtd_theme"
 html_static_path = ["_static"]

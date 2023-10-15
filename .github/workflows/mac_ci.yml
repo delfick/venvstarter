@@ -10,13 +10,13 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10"]
+        python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -32,7 +32,7 @@ jobs:
         id: python_cache
         uses: actions/cache@v2
         with:
-          key: python3.6.13_3.7.10_3.8.10_3.9.5_3.10.0
+          key: python3.6.13_3.7.10_3.8.10_3.9.5_3.10.13_3.11.6
           path: |
             /opt/hostedtoolcache/pyenv_root
             ~/hostedtoolcache/pyenv_root
@@ -51,7 +51,7 @@ jobs:
           curl -sSL https://github.com/python/cpython/commit/8ea6353.patch\?full_index\=1 > /tmp/patch
 
           pyenv install --patch 3.6.13 < /tmp/patch
-          for version in 3.7.10 3.8.10 3.9.5 3.10.0b1; do
+          for version in 3.7.10 3.8.10 3.9.5 3.10.13 3.11.6; do
             pyenv install $version
           done
 
@@ -67,6 +67,7 @@ jobs:
           V38=$(pyenv whence python3.8)
           V39=$(pyenv whence python3.9)
           V310=$(pyenv whence python3.10)
+          V311=$(pyenv whence python3.11)
 
           ROOT=$(pyenv root)
 
@@ -77,6 +78,7 @@ jobs:
             "python3.8": "$ROOT/versions/$V38/bin/python",
             "python3.9": "$ROOT/versions/$V39/bin/python",
             "python3.10": "$ROOT/versions/$V310/bin/python"
+            "python3.11": "$ROOT/versions/$V311/bin/python"
           }
           eof
 

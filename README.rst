@@ -20,6 +20,7 @@ Python:
     "python3.8": "~/.pyenv/versions/3.8.12/bin/python",
     "python3.9": "~/.pyenv/versions/3.9.6/bin/python"
     "python3.10": "~/.pyenv/versions/3.10.0/bin/python"
+    "python3.11": "~/.pyenv/versions/3.11.0/bin/python"
   }
 
 In this example I'm using pyenv to get copies of each Python. Using pyenv isn't

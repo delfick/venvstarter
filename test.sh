@@ -1,14 +1,7 @@
 #!/bin/bash
 
-if ! which pytest >/dev/null; then
-    echo "Please \`pip install -e '.[tests]'\` first"
-    exit 1
-fi
+set -e
 
-PYTEST="$(which pytest)"
+cd "$(git rev-parse --show-toplevel)"
 
-if [[ -z $PARALLEL_PYTEST ]]; then
-    exec bash -c "$PYTEST -q $*"
-else
-    exec bash -c "$PYTEST -q --workers $PARALLEL_PYTEST $*"
-fi
+exec ./tools/venv tests "$@"
