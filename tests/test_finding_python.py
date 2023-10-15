@@ -1,8 +1,8 @@
 # coding: spec
 
-from venvstarter import PythonHandler
 import pytest
 
+from venvstarter import PythonHandler
 
 describe "PythonHandler":
     describe "finding the right python":

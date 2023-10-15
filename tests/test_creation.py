@@ -1,8 +1,10 @@
 # coding: spec
 
-from venvstarter import Version
-import pytest
 import os
+
+import pytest
+
+from venvstarter import Version
 
 pytestmark = pytest.mark.creation_tests
 

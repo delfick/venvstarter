@@ -1,10 +1,11 @@
 # coding: spec
 
-from contextlib import contextmanager
-from pathlib import Path
-import pytest
 import json
 import os
+from contextlib import contextmanager
+from pathlib import Path
+
+import pytest
 
 
 @contextmanager

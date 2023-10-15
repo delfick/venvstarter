@@ -25,18 +25,18 @@ with the rest of the arguments given on the command line.
     If you want to skip checking the versions of your dependencies, then set
     VENV_STARTER_CHECK_DEPS=0 in your environment.
 """
-from textwrap import dedent
-from pathlib import Path
-import subprocess
-import tempfile
 import inspect
-import shutil
-import runpy
-import shlex
 import json
-import sys
 import os
 import re
+import runpy
+import shlex
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+from textwrap import dedent
 
 VERSION = "0.11.0"
 

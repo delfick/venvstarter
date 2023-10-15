@@ -1,10 +1,11 @@
 # coding: spec
 
-from pathlib import Path
-import pytest
-import time
 import json
 import os
+import time
+from pathlib import Path
+
+import pytest
 
 pytestmark = pytest.mark.usage_tests
 

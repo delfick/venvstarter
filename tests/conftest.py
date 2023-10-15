@@ -1,17 +1,19 @@
-from venvstarter import PythonHandler, FailedToGetOutput
-from contextlib import contextmanager
-from textwrap import dedent
-from unittest import mock
-from pathlib import Path
-import subprocess
-import tempfile
 import inspect
-import shutil
-import pytest
 import json
-import sys
 import os
 import re
+import shutil
+import subprocess
+import sys
+import tempfile
+from contextlib import contextmanager
+from pathlib import Path
+from textwrap import dedent
+from unittest import mock
+
+import pytest
+
+from venvstarter import FailedToGetOutput, PythonHandler
 
 this_dir = Path(__file__).parent
 
