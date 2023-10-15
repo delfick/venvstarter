@@ -4,7 +4,6 @@ import platform
 import shlex
 import shutil
 import sys
-import typing as tp
 from pathlib import Path
 
 here = Path(__file__).parent
@@ -14,27 +13,20 @@ if platform.system() == "Windows":
 
     shlex = mslex  # noqa
 
-if sys.version_info < (3, 10):
-    Dict = tp.Dict
-    List = tp.List
-else:
-    Dict = dict
-    List = list
 
-
-class Command(tp.Protocol):
+class Command:
     __is_command__: bool
 
-    def __call__(self, bin_dir: Path, args: List[str]) -> None:
-        ...
+    def __call__(self, bin_dir, args):
+        pass
 
 
-def command(func: tp.Callable) -> tp.Callable:
-    tp.cast(Command, func).__is_command__ = True
+def command(func):
+    func.__is_command__ = True
     return func
 
 
-def run(*args: tp.Union[str, Path], _env: tp.Union[None, Dict[str, str]] = None) -> None:
+def run(*args, _env=None):
     cmd = " ".join(shlex.quote(str(part)) for part in args)
     print(f"Running '{cmd}'")
     ret = os.system(cmd)
@@ -43,8 +35,6 @@ def run(*args: tp.Union[str, Path], _env: tp.Union[None, Dict[str, str]] = None)
 
 
 class App:
-    commands: Dict[str, Command]
-
     def __init__(self):
         self.commands = {}
 
@@ -58,7 +48,7 @@ class App:
                 ), f"Expected '{name}' to have correct signature, have {inspect.signature(val)} instead of {compare}"
                 self.commands[name] = val
 
-    def __call__(self, args: List[str]) -> None:
+    def __call__(self, args):
         bin_dir = Path(sys.executable).parent
 
         if args and args[0] in self.commands:
@@ -69,33 +59,33 @@ class App:
         sys.exit(f"Unknown command:\nAvailable: {sorted(self.commands)}\nWanted: {args}")
 
     @command
-    def format(self, bin_dir: Path, args: List[str]) -> None:
+    def format(self, bin_dir, args):
         if not args:
             args = [".", *args]
         run(bin_dir / "black", *args)
         run(bin_dir / "isort", *args)
 
     @command
-    def lint(self, bin_dir: Path, args: List[str]) -> None:
+    def lint(self, bin_dir, args):
         run(bin_dir / "pylama", *args)
 
     @command
-    def tests(self, bin_dir: Path, args: List[str]) -> None:
+    def tests(self, bin_dir, args):
         if "-q" not in args:
             args = ["-q", *args]
         run(bin_dir / "pytest", *args, _env={"NOSE_OF_YETI_BLACK_COMPAT": "false"})
 
     @command
-    def tox(self, bin_dir: Path, args: List[str]) -> None:
+    def tox(self, bin_dir, args):
         run(bin_dir / "tox", *args)
 
     @command
-    def types(self, bin_dir: Path, args: List[str]) -> None:
+    def types(self, bin_dir, args):
         if args and args[0] == "restart":
             args.pop(0)
             run(bin_dir / "dmypy", "stop")
 
-        args: List[tp.Union[str, Path]] = ["run", *args]
+        args = ["run", *args]
         if "--" not in args:
             args.extend(["--", "."])
 
@@ -109,12 +99,12 @@ class App:
         run(bin_dir / "dmypy", *args)
 
     @command
-    def docs(self, bin_dir: Path, args: List[str]) -> None:
+    def docs(self, bin_dir, args):
         docs_path = here / ".." / "docs"
         build_path = docs_path / "_build"
-        command: List[tp.Union[Path, str]] = [bin_dir / "sphinx-build"]
+        command = [bin_dir / "sphinx-build"]
 
-        other_args: List[str] = []
+        other_args = []
         for arg in args:
             if arg == "fresh":
                 if build_path.exists():
