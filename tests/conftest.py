@@ -17,7 +17,7 @@ from venvstarter import FailedToGetOutput, PythonHandler
 
 this_dir = Path(__file__).parent
 
-regexes = {"version": re.compile(r"3\.(6|7|8|9|10)")}
+regexes = {"version": re.compile(r"3\.(6|7|8|9|10|11)")}
 
 
 class Pythons:
@@ -32,13 +32,13 @@ class Pythons:
         if not isinstance(key, (float, str)):
             assert (
                 False
-            ), f"Can only get a python location using a float or string of 3.6, 3.7, etc. Used {key}"
+            ), f"Can only get a python location using a float or string of 3.7, 3.8, etc. Used {key}"
 
         key = str(key)
         if not regexes["version"].match(key):
             assert (
                 False
-            ), f"Can only get a python location using a float or string of 3.6, 3.7, etc. Used {key}"
+            ), f"Can only get a python location using a float or string of 3.7, 3.8, etc. Used {key}"
 
         return self.locations[f"python{key}"]
 
@@ -58,7 +58,7 @@ class PythonsFinder:
 
         if not isinstance(pythons, dict):
             pytest.exit(
-                'The pythons.json must be a dictionary of {"python3.6": <location>, "python3.7": <location>, ...}'
+                'The pythons.json must be a dictionary of {"python3.7": <location>, "python3.7": <location>, ...}'
             )
 
         missing = want - set(pythons)
@@ -123,6 +123,10 @@ class PythonsFinder:
                 PythonHandler().run_command(python_exe, "import venvstarter", cwd=tmpdir)
         except FailedToGetOutput:
             subprocess.run(
+                [str(python_exe), "-m", "pip", "install", "pip", "--upgrade"],
+                check=True,
+            )
+            subprocess.run(
                 [str(python_exe), "-m", "pip", "install", "-e", str(this_dir.parent)],
                 check=True,
             )
@@ -150,7 +154,7 @@ class PythonsFinder:
                     return False
 
     def find(self):
-        want = set(["python3.6", "python3.7", "python3.8", "python3.9", "python3.10"])
+        want = set(["python3.7", "python3.8", "python3.9", "python3.10", "python3.11"])
         pythons = self.pythons_json(want)
         for k in want:
             location = self.normalise_python_location(pythons, k)

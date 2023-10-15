@@ -28,7 +28,7 @@ jobs:
         id: python_cache
         uses: actions/cache@v2
         with:
-          key: python3.6.8_3.7.9_3.8.10_3.9.6_3.10.13_3.11.6
+          key: python3.7.9_3.8.10_3.9.6_3.10.13_3.11.6
           path: |
             ~/.pyenv
 
@@ -47,7 +47,6 @@ jobs:
 
           pyenv --version
 
-          pyenv install 3.6.8
           pyenv install 3.7.9
           pyenv install 3.8.10
           pyenv install 3.9.6
@@ -64,7 +63,6 @@ jobs:
           ROOT=~/.pyenv
           ls $ROOT
           pyenv whence python
-          V36=$(pyenv whence python3.6)
           V37=$(pyenv whence python3.7)
           V38=$(pyenv whence python3.8)
           V39=$(pyenv whence python3.9)
@@ -73,7 +71,6 @@ jobs:
 
           cat <<EOF > pythons.json
           {
-            "python3.6": "~/.pyenv/pyenv-win/versions/$V36/python.exe",
             "python3.7": "~/.pyenv/pyenv-win/versions/$V37/python.exe",
             "python3.8": "~/.pyenv/pyenv-win/versions/$V38/python.exe",
             "python3.9": "~/.pyenv/pyenv-win/versions/$V39/python.exe",

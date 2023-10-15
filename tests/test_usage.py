@@ -77,7 +77,7 @@ describe "Finding the right version":
                 ).run()
 
             with pytest.helpers.make_script(
-                script, json.dumps(str(creator.path)), prepare_venv=True
+                script, repr(str(creator.path)), prepare_venv=True
             ) as filename:
                 output = pytest.helpers.get_output(filename, "and", "it", "works")
                 assert output == "THINGY and it works"

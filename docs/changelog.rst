@@ -1,6 +1,12 @@
 Changelog
 ---------
 
+.. _release-0.12.0:
+
+0.12.0 - TBD
+   * Removed support for python3.6
+   * Changed packaging to use hatch
+
 .. _release-0.11.0:
 
 0.11.0 - 17 Feburary 2022

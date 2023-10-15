@@ -6,7 +6,7 @@ import pytest
 
 describe "ignite":
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
     it "works", version:
 
         def script():
@@ -21,7 +21,7 @@ describe "ignite":
             ).run()
 
         with pytest.helpers.PATH.configure(
-            3.6, 3.7, 3.8, 3.9, python=version, python3=version, mock_sys=version
+            3.7, 3.8, 3.9, "3.10", "3.11", python=version, python3=version, mock_sys=version
         ):
             with pytest.helpers.make_script(script) as filename:
                 assert not (Path(filename).parent / ".blah").exists()

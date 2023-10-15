@@ -38,7 +38,6 @@ jobs:
 
           pyenv --version
 
-          pyenv install 3.6.13
           pyenv install 3.7.10
           pyenv install 3.8.10
           pyenv install 3.9.5
@@ -52,7 +51,6 @@ jobs:
           set -e
 
           pyenv versions
-          V36=$(pyenv whence python3.6)
           V37=$(pyenv whence python3.7)
           V38=$(pyenv whence python3.8)
           V39=$(pyenv whence python3.9)
@@ -63,7 +61,6 @@ jobs:
 
           cat <<EOF > pythons.json
           {
-            "python3.6": "$ROOT/versions/$V36/bin/python",
             "python3.7": "$ROOT/versions/$V37/bin/python",
             "python3.8": "$ROOT/versions/$V38/bin/python",
             "python3.9": "$ROOT/versions/$V39/bin/python",

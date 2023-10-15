@@ -1,6 +1,5 @@
 # coding: spec
 
-import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -52,14 +51,14 @@ def entry_point(script):
             return decorated
 
         with pytest.helpers.make_script(
-            script, json.dumps(str(creator.path)), prepare_venv=True, decorator=decorator
+            script, repr(str(creator.path)), prepare_venv=True, decorator=decorator
         ) as filename:
             yield filename
 
 
 describe "Different programs":
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
     it "can be None", version:
 
         def script():
@@ -73,7 +72,7 @@ describe "Different programs":
             output = pytest.helpers.get_output(filename, "thing", "one", "two")
             assert output == "THINGY one two"
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
     it "can be an entry point", version:
 
         def script():
@@ -83,7 +82,7 @@ describe "Different programs":
             output = pytest.helpers.get_output(filename, "one", "two").split("\n")
             assert output[-1] == "THINGY one two"
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
     it "can be a binary", version:
 
         def script():
@@ -93,7 +92,7 @@ describe "Different programs":
             output = pytest.helpers.get_output(filename, "-c", "print('I am a python')").split("\n")
             assert output[-1] == "I am a python"
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
     it "can be a list", version:
 
         def script():
@@ -122,7 +121,7 @@ describe "Different programs":
                 output = pytest.helpers.get_output(filename).split("\n")
                 assert output[-1] == '    print("this should be last!")'
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
     it "can be a function that doesn't do anything", version:
 
         def script():
@@ -135,7 +134,7 @@ describe "Different programs":
             output = pytest.helpers.get_output(filename, "tongue").split("\n")
             assert output[-1] == str(Path(filename).parent / ".venv")
 
-    @pytest.mark.parametrize("version", [3.6, 3.7, 3.8, 3.9])
+    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
     it "can be a function that returns a path to run", version:
 
         def script():

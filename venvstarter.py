@@ -428,7 +428,7 @@ class Starter(object):
         For example:
 
         * 3
-        * 3.6
+        * 3.7
         * "3.7.13"
         * (3, 7, 13)
         * distutils.StrictVersion("3.7.13")
@@ -443,7 +443,7 @@ class Starter(object):
         For example:
 
         * 3
-        * 3.6
+        * 3.7
         * "3.7.13"
         * (3, 7, 13)
         * distutils.StrictVersion("3.7.13")
@@ -509,8 +509,8 @@ class Starter(object):
         if self.max_python is not None and self.min_python > self.max_python:
             raise Exception("min_python_version must be less than max_python_version")
 
-        if self.min_python < Version(3.6):
-            raise Exception("Only support python3.6 and above")
+        if self.min_python < Version(3.7):
+            raise Exception("Only support python3.7 and above")
 
     @memoized_property
     def venv_location(self):
@@ -1073,14 +1073,14 @@ def ignite(
         For example:
 
         * 3
-        * 3.6
+        * 3.7
         * "3.7.13"
         * (3, 7, 13)
         * distutils.StrictVersion("3.7.13")
 
         Represents the minimum version of python needed for the virtualenv.
 
-        This will always default to 3.6.
+        This will always default to 3.7.
 
     max_python_version
         An int, float, str, tuple or object with "version" of a tuple.
@@ -1088,7 +1088,7 @@ def ignite(
         For example:
 
         * 3
-        * 3.6
+        * 3.7
         * "3.7.13"
         * (3, 7, 13)
         * distutils.StrictVersion("3.7.13")
@@ -1098,7 +1098,7 @@ def ignite(
         This is optional but when specified must be a version equal to or greater
         than min_python_version.
     """
-    m = manager(program).place_venv_in(venv_folder).min_python(min_python_version or "3.6")
+    m = manager(program).place_venv_in(venv_folder).min_python(min_python_version or "3.7")
 
     if deps is not None:
         m.add_pypi_deps(*deps).add_env
