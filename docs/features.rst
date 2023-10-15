@@ -180,31 +180,37 @@ how venvstarter knows to change any sub dependencies that come from that code.
 For example, if there is this code structure in the repository::
 
     /
-      setup.py
+      pyproject.toml
       mycode/
         __init__.py
         executor.py
       run
 
-/setup.py
+/pyproject.toml
 
-.. code-block:: python
+.. code-block:: toml
 
-    from mycode import VERSION
+    [build-system]
+    requires = ["hatchling"]
+    build-backend = "hatchling.build"
 
-    from setuptools import setup, find_packages
+    [project]
+    name = "mycode"
+    dynamic = ["version"]
+    dependencies = [
+        "dict2xml==1.7.0
+    ]
 
-    setup(
-        name = 'mycode'
-      , version = VERSION
-      , packages = find_packages(include="runner.*", exclude=["tests*"])
+    [project.scripts]
+    take-over-the-world = "mycode.executor:main"
 
-      , entry_points =
-        { 'console_scripts' :
-          [ 'take-over-the-world = mycode.executor:main'
-          ]
-        }
-      )
+    [tool.hatch.version]
+    path = "mycode/__init__.py"
+
+    [tool.hatch.build.targets.sdist]
+    include = [
+        "/mycode",
+    ]
 
 /mycode/__init__.py
 

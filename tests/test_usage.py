@@ -41,22 +41,26 @@ describe "Finding the right version":
         with pytest.helpers.directory_creator() as creator:
 
             creator.add(
-                "setup.py",
+                "pyproject.toml",
                 content="""
-            from setuptools import setup, find_packages
-            from thing import VERSION
+                [build-system]
+                requires = ["hatchling"]
+                build-backend = "hatchling.build"
 
-            setup(
-                  name = 'thinger'
-                , version = VERSION
-                , packages = find_packages(include="thing.*")
+                [project]
+                name = "thinger"
+                dynamic = ["version"]
 
-                , entry_points =
-                  { 'console_scripts' :
-                    [ 'thing = thing.main:main'
-                    ]
-                  }
-                )
+                [project.scripts]
+                thing = "thing.main:main"
+
+                [tool.hatch.version]
+                path = "thing/__init__.py"
+
+                [tool.hatch.build.targets.sdist]
+                include = [
+                    "/thing",
+                ]
             """,
             )
             creator.add("thing", "__init__.py", content="VERSION = '0.1'")
@@ -83,27 +87,30 @@ describe "Finding the right version":
                 assert output == "THINGY and it works"
 
                 creator.add(
-                    "setup.py",
+                    "pyproject.toml",
                     content="""
-                    from setuptools import setup, find_packages
-                    from thing import VERSION
+                    [build-system]
+                    requires = ["hatchling"]
+                    build-backend = "hatchling.build"
 
-                    setup(
-                          name = 'thinger'
-                        , version = VERSION
-                        , packages = find_packages(include="thing.*")
+                    [project]
+                    name = "thinger"
+                    dynamic = ["version"]
+                    dependencies = [
+                        "dict2xml==1.7.0",
+                    ]
 
-                        , entry_points =
-                        { 'console_scripts' :
-                          [ 'thing = thing.main:main'
-                          ]
-                        }
+                    [project.scripts]
+                    thing = "thing.main:main"
 
-                        , install_requires =
-                          [ 'dict2xml==1.7.0'
-                          ] 
-                        )
-                    """,
+                    [tool.hatch.version]
+                    path = "thing/__init__.py"
+
+                    [tool.hatch.build.targets.sdist]
+                    include = [
+                        "/thing",
+                    ]
+                """,
                 )
                 creator.add("thing", "__init__.py", content="VERSION = '0.2'")
                 creator.add(
