@@ -157,7 +157,7 @@ describe "Finding the right version":
     it "can be used to make sure a dependency isn't binary":
 
         def script():
-            __import__("venvstarter").manager("python").add_pypi_deps("noy_black").run()
+            __import__("venvstarter").manager("python").add_pypi_deps("noseOfYeti[black]").run()
 
         with pytest.helpers.make_script(script, prepare_venv=True) as filename:
             output = pytest.helpers.get_output(
@@ -168,7 +168,7 @@ describe "Finding the right version":
 
             def script():
                 __import__("venvstarter").manager("python").add_pypi_deps(
-                    "noy_black"
+                    "noseOfYeti[black]"
                 ).add_no_binary("black").run()
 
             pytest.helpers.write_script(script, prepare_venv=True, filename=filename)

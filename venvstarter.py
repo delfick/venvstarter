@@ -811,7 +811,7 @@ class manager:
     .. code-block:: python
 
         (__import__("venvstarter").manager("black")
-            .add_pypi_deps("noy_black==0.3.0")
+            .add_pypi_deps("black==23.9.1")
             .run()
             )
     """

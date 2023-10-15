@@ -307,8 +307,8 @@ from source:
 
 .. code-block:: python
 
-    manager = __import__("venvstarter").manager("noy_black")
-    manager.add_pypi_deps("noy-black==0.3.4", "noseOfYeti>=2.3.1")
+    manager = __import__("venvstarter").manager("black")
+    manager.add_pypi_deps("noseOfYeti[black]>=2.4.2")
     manager.add_no_binary("black")
     manager.run()
 
