@@ -10,7 +10,7 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10"]
+        python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
 
     steps:
       - uses: actions/checkout@v3
@@ -28,7 +28,7 @@ jobs:
         id: python_cache
         uses: actions/cache@v2
         with:
-          key: python3.7.9_3.8.10_3.9.6_3.10.13_3.11.6
+          key: python3.7.9_3.8.10_3.9.13_3.10.5_3.11.0b4
           path: |
             ~/.pyenv
 
@@ -38,6 +38,11 @@ jobs:
           echo "PYENV=$USERPROFILE\.pyenv\pyenv-win\\" >> $GITHUB_ENV
           echo "PYENV_HOME=$USERPROFILE\.pyenv\pyenv-win\\" >> $GITHUB_ENV
           echo "$USERPROFILE\.pyenv\pyenv-win\\bin\\" >> $GITHUB_PATH
+
+      - name: Available pyenv versions
+        shell: bash
+        run: |
+          pyenv install --list
 
       - name: Install python versions
         if: steps.python_cache.outputs.cache-hit != 'true'
@@ -49,9 +54,9 @@ jobs:
 
           pyenv install 3.7.9
           pyenv install 3.8.10
-          pyenv install 3.9.6
-          pyenv install 3.10.13
-          pyenv install 3.11.6
+          pyenv install 3.9.13
+          pyenv install 3.10.5
+          pyenv install 3.11.0b4
 
           pyenv rehash
 
@@ -67,14 +72,14 @@ jobs:
           V38=$(pyenv whence python3.8)
           V39=$(pyenv whence python3.9)
           V310=$(pyenv whence python3.10)
-          V311=$(pyenv whence python3.11)
+          V311="3.11.0b4"
 
           cat <<EOF > pythons.json
           {
             "python3.7": "~/.pyenv/pyenv-win/versions/$V37/python.exe",
             "python3.8": "~/.pyenv/pyenv-win/versions/$V38/python.exe",
             "python3.9": "~/.pyenv/pyenv-win/versions/$V39/python.exe",
-            "python3.10": "~/.pyenv/pyenv-win/versions/$V310/python.exe"
+            "python3.10": "~/.pyenv/pyenv-win/versions/$V310/python.exe",
             "python3.11": "~/.pyenv/pyenv-win/versions/$V311/python.exe"
           }
           EOF

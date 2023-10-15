@@ -21,13 +21,18 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Get pyenv
-        uses: gabrielfalcao/pyenv-action@v8
+        uses: gabrielfalcao/pyenv-action@v16
+
+      - name: Available pyenv versions
+        shell: bash
+        run: |
+          pyenv install --list
 
       - name: Cache Python
         id: python_cache
         uses: actions/cache@v2
         with:
-          key: python3.6.13_3.7.10_3.8.10_3.9.5_3.10.13_3.11.6
+          key: python3.7.17_3.8.17_3.9.17_3.10.12_3.11.4
           path: |
             /opt/hostedtoolcache/pyenv_root
 
@@ -38,11 +43,9 @@ jobs:
 
           pyenv --version
 
-          pyenv install 3.7.10
-          pyenv install 3.8.10
-          pyenv install 3.9.5
-          pyenv install 3.10.13
-          pyenv install 3.11.6
+          for version in 3.7.17 3.8.17 3.9.17 3.10.12 3.11.4; do
+            pyenv install $version
+          done
 
           pyenv rehash
 
@@ -64,7 +67,7 @@ jobs:
             "python3.7": "$ROOT/versions/$V37/bin/python",
             "python3.8": "$ROOT/versions/$V38/bin/python",
             "python3.9": "$ROOT/versions/$V39/bin/python",
-            "python3.10": "$ROOT/versions/$V310/bin/python"
+            "python3.10": "$ROOT/versions/$V310/bin/python",
             "python3.11": "$ROOT/versions/$V311/bin/python"
           }
           EOF
