@@ -25,11 +25,12 @@ tests = [
 Homepage = "https://github.com/delfick/venvstarter"
 
 [tool.hatch.version]
-path = "venvstarter.py"
+path = "_venvstarter/version.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/venvstarter",
+    "/_venvstarter",
+    "/venvstarter.py",
 ]
 
 [tool.black]
