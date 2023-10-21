@@ -32,14 +32,17 @@ here = str(pathlib.Path(__file__).parent.resolve())
 if here not in sys.path:
     sys.path.append(here)
 
-from _venvstarter import FailedToGetOutput, PythonHandler, ignite, manager
+from _venvstarter import FailedToGetOutput, PythonHandler, manager
 from _venvstarter.version import VERSION
+
+
+def ignite(*args, **kwargs):
+    raise RuntimeError("venvstarter.ignite has been removed, migrate to venvstarter.manager")
+
 
 __all__ = [
     "manager",
     "VERSION",
     "PythonHandler",
     "FailedToGetOutput",
-    # and ignite for backwards compatibility
-    "ignite",
 ]

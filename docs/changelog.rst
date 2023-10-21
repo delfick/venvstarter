@@ -8,6 +8,7 @@ Changelog
    * Changed packaging to use hatch
    * Pip is made to be greater than 23 when a venv is used
      unless ``VENVSTARTER_UPGRADE_PIP=0``
+   * Removed venvstarter.ignite
 
 .. _release-0.11.0:
 

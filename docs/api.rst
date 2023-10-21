@@ -7,9 +7,3 @@ API
 
 .. autoclass:: venvstarter.manager
    :members:
-
-
-Backwards Compatibility
------------------------
-
-.. autofunction:: venvstarter.ignite
