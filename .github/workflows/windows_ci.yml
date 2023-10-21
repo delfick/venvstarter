@@ -39,18 +39,15 @@ jobs:
           tools/.python/Scripts/python.exe -m pip install pip>=23 --upgrade
           VENVSTARTER_ONLY_MAKE_VENV=1 ./test.sh
 
-      - name: Install venvstarter in system
-        shell: bash
-        run: |
-          python3 -m pip install -e '.[tests]'
-
-      - name: Cache Python
+      - name: Restore pyenv cache cache
         id: python_cache
-        uses: actions/cache@v2
+        uses: actions/cache/restore@v3
         with:
-          key: python3.7.9_3.8.10_3.9.13_3.10.5_3.11.0b4
+          key: ${{ runner.os }}-python-3.7.9_3.8.10_3.9.13_3.10.5_3.11.0b4
           path: |
             ~/.pyenv
+          restore-keys:
+            ${{ runner.os }}-python-
 
       - name: pyenv on PATH
         shell: bash
@@ -80,6 +77,15 @@ jobs:
 
           pyenv rehash
 
+      - name: Save pyenv cache
+        id: save_python_cache
+        uses: actions/cache/save@v3
+        with:
+          key: ${{ steps.python_cache.outputs.cache-primary-key }}
+          if: always()
+          path: |
+            ~/.pyenv
+
       - name: Find python versions
         shell: bash
         run: |
@@ -108,6 +114,11 @@ jobs:
         shell: bash
         run: |
           cat pythons.json
+
+      - name: Install venvstarter in system
+        shell: bash
+        run: |
+          python3 -m pip install -e '.[tests]'
 
       - name: Run the tests
         shell: bash
