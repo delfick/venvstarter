@@ -11,6 +11,8 @@ import tempfile
 from pathlib import Path
 from textwrap import dedent
 
+from . import errors
+
 regexes = {
     "version_specifier": re.compile(r"([^=><]+)(.*)"),
     "ascii": re.compile(r"([a-zA-Z]+(0-9)*)+"),
@@ -23,53 +25,6 @@ def do_format(s, **kwargs):
         return s.format(**kwargs)
     else:
         return str(s).format(**kwargs)
-
-
-class ScriptNotFound(Exception):
-    def __init__(self, location, name):
-        super().__init__()
-        self.name = name
-        self.location = location
-
-    def __str__(self):
-        available = ", ".join(
-            n.name for n in self.location.parent.iterdir() if "." not in n.name and n.exists()
-        )
-        return "\n".join(
-            [
-                "\nCouldn't find the executable!",
-                f"Wanted {self.name}",
-                f"Available is {available}",
-            ]
-        )
-
-
-class FailedToGetOutput(Exception):
-    def __init__(self, error, stderr):
-        super().__init__()
-        self.error = error
-        self.stderr = stderr
-
-    def __str__(self):
-        return f"Failed to get output\nstderr: {self.stderr}\nerror: {self.error}"
-
-
-class VersionNotSpecified(Exception):
-    def __init__(self, name):
-        super().__init__()
-        self.name = name
-
-    def __str__(self):
-        return f"A version_file was specified for a local dependency, but '{{version}}' not found in the name: {self.name}"
-
-
-class InvalidVersion(Exception):
-    def __init__(self, want):
-        super().__init__()
-        self.want = want
-
-    def __str__(self):
-        return f"Version needs to be an int, float or string, got {self.want}"
 
 
 class Version:
@@ -90,11 +45,11 @@ class Version:
             version = f"{version[0]}.{version[1]}.{version[2]}"
 
         if not isinstance(version, str):
-            raise InvalidVersion(original)
+            raise errors.InvalidVersion(original)
 
         m = regexes["version_string"].match(version)
         if m is None:
-            raise InvalidVersion(version)
+            raise errors.InvalidVersion(version)
 
         groups = m.groups()
         self.major = int(groups[0])
@@ -252,7 +207,7 @@ class PythonHandler:
             stde = ""
             if error.stderr:
                 stde = error.stderr.decode()
-            raise FailedToGetOutput(stde, error)
+            raise errors.FailedToGetOutput(stde, error)
         finally:
             location = Path(fle.name)
             if fle is not None and location.exists():
@@ -266,7 +221,7 @@ class PythonHandler:
             version_info = self.get_output(
                 executable, 'print(__import__("json").dumps(list(__import__("sys").version_info)))'
             )
-        except FailedToGetOutput:
+        except errors.FailedToGetOutput:
             if raise_error:
                 raise
             return executable, None
@@ -515,7 +470,7 @@ class Starter(object):
         if default is not None:
             return default
 
-        raise ScriptNotFound(location, name)
+        raise errors.ScriptNotFound(location, name)
 
     @memoized_property
     def venv_python(self):
@@ -528,7 +483,7 @@ class Starter(object):
 
             try:
                 _, version_info = finder.version_for(self.venv_python)
-            except ScriptNotFound:
+            except errors.ScriptNotFound:
                 version_info = None
 
             if not finder.suitable(version_info):
@@ -945,7 +900,7 @@ class manager:
             version = runpy.run_path(location)["VERSION"]
 
             if "{version}" not in name:
-                raise VersionNotSpecified(name)
+                raise errors.VersionNotSpecified(name)
 
         name = do_format(name, version=version)
         if with_tests:
@@ -1015,5 +970,4 @@ class manager:
 __all__ = [
     "manager",
     "PythonHandler",
-    "FailedToGetOutput",
 ]

@@ -32,7 +32,8 @@ here = str(pathlib.Path(__file__).parent.resolve())
 if here not in sys.path:
     sys.path.append(here)
 
-from _venvstarter import FailedToGetOutput, PythonHandler, manager
+from _venvstarter import PythonHandler, manager
+from _venvstarter.errors import FailedToGetOutput
 from _venvstarter.version import VERSION
 
 
