@@ -12,3 +12,10 @@ class memoized_property(object):
 
     def __set__(self, instance, value):
         setattr(instance, self.key, value)
+
+
+def do_format(s, **kwargs):
+    if hasattr(s, "format"):
+        return s.format(**kwargs)
+    else:
+        return str(s).format(**kwargs)
