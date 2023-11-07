@@ -27,6 +27,12 @@ Homepage = "https://github.com/delfick/venvstarter"
 [tool.hatch.version]
 path = "_venvstarter/version.py"
 
+[tool.hatch.build]
+include = [
+    "/_venvstarter",
+    "/venvstarter.py",
+]
+
 [tool.hatch.build.targets.sdist]
 include = [
     "/_venvstarter",

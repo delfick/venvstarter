@@ -1,3 +1,4 @@
+import inspect
 import json
 import os
 import shlex
@@ -9,7 +10,7 @@ from pathlib import Path
 
 from . import errors
 from . import helpers as hp
-from . import python_handler
+from . import python_handler, questions
 
 
 class Starter(object):
@@ -119,6 +120,7 @@ class Starter(object):
         env=None,
         min_python_version=None,
         max_python_version=None,
+        packaging_version="23.2",
     ):
         self.env = env
         self.deps = deps
@@ -126,6 +128,7 @@ class Starter(object):
         self.no_binary = no_binary
         self.venv_folder = venv_folder
         self.venv_folder_name = venv_folder_name
+        self.packaging_version = packaging_version
         self.min_python_version = min_python_version
         self.max_python_version = max_python_version
 
@@ -241,28 +244,13 @@ class Starter(object):
         if check_no_binary:
             no_binary = self.no_binary
 
-        deps = json.dumps(deps_to_use)
-
         handler = python_handler.PythonHandler()
-        question = """
-            import pkg_resources
-            import importlib
-            import sys
-
-            try:
-                pkg_resources.working_set.require({0})
-            except (pkg_resources.DistributionNotFound, pkg_resources.VersionConflict) as error:
-                sys.stderr.write(str(error) + "\\n\\n")
-                sys.stderr.flush()
-                raise SystemExit(1)
-
-            for name in {1}:
-                if importlib.import_module(name).__file__.endswith(".so"):
-                    sys.stderr.write(f"{{name}} needs to not be a binary installation\\n\\n")
-                    sys.stderr.flush()
-                    raise SystemExit(1)
-            """.format(
-            deps, no_binary
+        question = "\n".join(
+            [
+                inspect.getsource(questions.determine_if_needs_installation),
+                inspect.getsource(questions.ensure_packaging_module),
+                f"\ndetermine_if_needs_installation({json.dumps(deps_to_use)}, {json.dumps(no_binary)}, {self.packaging_version})",
+            ]
         )
         return handler.run_command(self.venv_python, question, check=False).returncode
 

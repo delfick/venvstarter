@@ -18,7 +18,7 @@ describe "Finding the right version":
                 "requirements.txt",
                 content="""
                 dict2xml
-                pip-chill
+                alt-pytest-asyncio==0.7.2
                 """,
             )
             creator.add(
@@ -33,7 +33,7 @@ describe "Finding the right version":
             output = pytest.helpers.get_output(
                 str(creator.path / "start"),
                 "-c",
-                "import dict2xml; import pip_chill; print('yay')",
+                "import dict2xml; import alt_pytest_asyncio; print('yay')",
             ).split("\n")
             assert output[-1] == "yay"
 
@@ -144,13 +144,15 @@ describe "Finding the right version":
     it "can be used to add a pypi dep":
 
         def script():
-            __import__("venvstarter").manager("python").add_pypi_deps("dict2xml", "pip-chill").run()
+            __import__("venvstarter").manager("python").add_pypi_deps(
+                "dict2xml", "alt-pytest-asyncio==0.7.2"
+            ).run()
 
         with pytest.helpers.make_script(script, prepare_venv=True) as filename:
             output = pytest.helpers.get_output(
                 filename,
                 "-c",
-                "import dict2xml; import pip_chill; print('yay')",
+                "import dict2xml; import alt_pytest_asyncio; print('yay')",
             ).split("\n")
             assert output[-1] == "yay"
 

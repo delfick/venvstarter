@@ -25,9 +25,7 @@ manager.add_env(NOSE_OF_YETI_BLACK_COMPAT="true")
 manager.add_local_dep(
     "{here}",
     "..",
-    version_file=(
-        "venvstarter.py",
-    ),
+    version_file=("venvstarter.py",),
     name="venvstarter=={version}",
     with_tests=True,
 )

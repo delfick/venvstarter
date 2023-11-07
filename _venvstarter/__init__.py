@@ -51,6 +51,7 @@ class manager:
         self._min_python = None
         self._venv_folder = NotSpecified
         self._venv_folder_name = None
+        self._packaging_version = None
 
     def place_venv_in(self, location):
         """
@@ -78,6 +79,14 @@ class manager:
         This will set the name of the virtualenv folder
         """
         self._venv_folder_name = name
+        return self
+
+    def set_packaging_version(self, packaging_version):
+        """
+        This will override the default packaging version installed in the virtualenv for
+        python versions from python3.8 and up
+        """
+        self._packaging_version = packaging_version
         return self
 
     def add_pypi_deps(self, *deps):
@@ -253,4 +262,9 @@ class manager:
             no_binary=self._no_binary,
             min_python_version=self._min_python,
             max_python_version=self._max_python,
+            **(
+                {}
+                if self._packaging_version is None
+                else {"packaging_version": self._packaging_version}
+            ),
         ).run()

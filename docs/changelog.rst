@@ -9,6 +9,7 @@ Changelog
    * Pip is made to be greater than 23 when a venv is used
      unless ``VENVSTARTER_UPGRADE_PIP=0``
    * Removed venvstarter.ignite
+   * Added support for python 3.12
 
 .. _release-0.11.0:
 
