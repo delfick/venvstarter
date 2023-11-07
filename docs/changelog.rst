@@ -3,7 +3,7 @@ Changelog
 
 .. _release-0.12.0:
 
-0.12.0 - TBD
+0.12.0 - 7 November 2023
    * Removed support for python3.6
    * Changed packaging to use hatch
    * Pip is made to be greater than 23 when a ``venv`` is used
