@@ -35,6 +35,7 @@ if here not in sys.path:
 from _venvstarter import manager
 from _venvstarter.errors import FailedToGetOutput
 from _venvstarter.python_handler import PythonHandler, Version
+from _venvstarter.starter import Starter
 from _venvstarter.version import VERSION
 
 
@@ -46,6 +47,7 @@ __all__ = [
     "manager",
     "VERSION",
     "Version",
+    "Starter",
     "PythonHandler",
     "FailedToGetOutput",
 ]
