@@ -11,3 +11,4 @@ hatch==1.7.0
 mypy==1.4.1
 tox==4.8.0
 mslex==0.3.0; sys.platform == 'win32'
+python-lsp-pylama==0.1.0
