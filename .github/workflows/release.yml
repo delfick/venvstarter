@@ -20,8 +20,8 @@ jobs:
 
       - id: version
         run: |
-          version=$(python -c "import runpy; print(runpy.run_path('strcs/version.py')['VERSION'])")
-          versiondash=$(python -c "import runpy; print(runpy.run_path('strcs/version.py')['VERSION'].replace('.', '-'))")
+          version=$(python -c "import runpy; print(runpy.run_path('_venvstarter/version.py')['VERSION'])")
+          versiondash=$(python -c "import runpy; print(runpy.run_path('_venvstarter/version.py')['VERSION'].replace('.', '-'))")
 
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "versiondash=$versiondash" >> $GITHUB_OUTPUT
@@ -29,8 +29,8 @@ jobs:
       - id: create-release
         uses: softprops/action-gh-release@v1
         with:
-          name: strcs ${{ steps.version.outputs.version }}
-          body: "https://strcs.readthedocs.io/en/latest/strcs/changelog.html#release-${{ steps.version.outputs.versiondash }}"
+          name: venvstarter ${{ steps.version.outputs.version }}
+          body: "https://venvstarter.readthedocs.io/en/latest/changelog.html#release-${{ steps.version.outputs.versiondash }}"
           tag_name: "release-${{ steps.version.outputs.version }}"
           token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_unmatched_files: true
