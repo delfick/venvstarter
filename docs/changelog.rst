@@ -3,7 +3,7 @@ Changelog
 
 .. _release-0.12.1:
 
-0.12.1 - TBD
+0.12.1 - 26 November 2023
     * Understand ``backports`` packages better
 
 .. _release-0.12.0:
