@@ -65,15 +65,22 @@ def determine_if_needs_installation(deps, no_binary, packaging_version):
             need[req.name].append(req.specifier)
 
             if req.name not in have:
+                req_name = req.name
+                if req.name.startswith("backports-"):
+                    try:
+                        version(req.name)
+                    except PackageNotFoundError:
+                        req_name = req_name.replace("-", ".", 1)
+
                 try:
-                    have[req.name] = version(req.name)
+                    have[req.name] = version(req_name)
                 except PackageNotFoundError as error:
                     sys.stderr.write(f"{error}\n\n")
                     sys.stderr.flush()
                     raise SystemExit(1)
 
             for tag in ("", *req.extras):
-                for dist_dep in requires(req.name) or []:
+                for dist_dep in requires(req_name) or []:
                     dist_req = Requirement(dist_dep)
                     if dist_req.marker and not dist_req.marker.evaluate({"tag": tag}):
                         continue
