@@ -25,13 +25,6 @@ with the rest of the arguments given on the command line.
     If you want to skip checking the versions of your dependencies, then set
     VENV_STARTER_CHECK_DEPS=0 in your environment.
 """
-import pathlib
-import sys
-
-here = str(pathlib.Path(__file__).parent.resolve())
-if here not in sys.path:
-    sys.path.append(here)
-
 from _venvstarter import manager
 from _venvstarter.errors import FailedToGetOutput
 from _venvstarter.python_handler import PythonHandler, Version

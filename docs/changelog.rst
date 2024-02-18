@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+.. _release-0.12.2:
+
+0.12.2 - TBD
+    * Improved the bootstrap script and example equivalent
+
 .. _release-0.12.1:
 
 0.12.1 - 26 November 2023
