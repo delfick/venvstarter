@@ -61,6 +61,11 @@ describe "Finding the right version":
                 include = [
                     "/thing",
                 ]
+
+                [tool.hatch.build.targets.wheel]
+                include = [
+                    "/thing",
+                ]
             """,
             )
             creator.add("thing", "__init__.py", content="VERSION = '0.1'")
@@ -107,6 +112,11 @@ describe "Finding the right version":
                     path = "thing/__init__.py"
 
                     [tool.hatch.build.targets.sdist]
+                    include = [
+                        "/thing",
+                    ]
+
+                    [tool.hatch.build.targets.wheel]
                     include = [
                         "/thing",
                     ]

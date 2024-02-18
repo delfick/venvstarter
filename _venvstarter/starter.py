@@ -409,7 +409,7 @@ class Starter(object):
         made = self.make_virtualenv()
 
         if os.environ.get("VENVSTARTER_UPGRADE_PIP", None) != "0":
-            self.install_deps(deps=["pip>=23"], check_no_binary=False)
+            self.install_deps(deps=["pip>=24"], check_no_binary=False)
 
         if made or os.environ.get("VENV_STARTER_CHECK_DEPS", None) != "0":
             self.install_deps()

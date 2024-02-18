@@ -169,7 +169,7 @@ There are a couple environment variables that change what ``venvstarter`` does:
     ``virtualenv``.
 
 ``VENVSTARTER_UPGRADE_PIP=0``
-    This will make sure that pip is not ensured to be greater than 23 before
+    This will make sure that pip is not ensured to be greater than 24 before
     requirements are installed
 
 .. _local_deps:

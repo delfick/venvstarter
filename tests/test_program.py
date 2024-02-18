@@ -32,6 +32,11 @@ def entry_point(script):
             include = [
                 "/thing",
             ]
+
+            [tool.hatch.build.targets.wheel]
+            include = [
+                "/thing",
+            ]
         """,
         )
         creator.add("thing", "__init__.py", content="VERSION = '0.1'")

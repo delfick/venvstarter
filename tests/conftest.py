@@ -103,7 +103,7 @@ class PythonsFinder:
         if created:
             subprocess.run([str(py), "-m", "ensurepip"], check=True)
 
-        subprocess.run([str(py), "-m", "pip", "install", "pip>=23", "--upgrade"], check=True)
+        subprocess.run([str(py), "-m", "pip", "install", "pip>=24", "--upgrade"], check=True)
 
         if not py.exists():
             if errors:
