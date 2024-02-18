@@ -15,7 +15,7 @@ authors = [
 
 [project.optional-dependencies]
 tests = [
-    "noseOfYeti[black]==2.4.2",
+    "noseOfYeti[black]==2.4.7",
     "pytest-helpers-namespace==2021.12.29",
     "pytest-parallel==0.1.1",
     "pytest>=7.2.0",
