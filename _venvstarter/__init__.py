@@ -207,7 +207,13 @@ class manager:
                 groups = m.groups()
                 name = f"{groups[0]}[tests]{''.join(groups[1:])}"
 
-        dep = f"{Path(path).resolve().absolute().as_uri()}#egg={name}"
+        just_name_match = python_handler.regexes["name_version_split"].match(name)
+        if not just_name_match:
+            raise errors.FailedToGetNameAndVersion(name)
+
+        just_name_groups = just_name_match.groupdict()
+
+        dep = f"{Path(path).resolve().absolute().as_uri()}?{just_name_groups['version']}#{just_name_groups['name']}"
 
         if editable:
             dep = f"-e {dep}"

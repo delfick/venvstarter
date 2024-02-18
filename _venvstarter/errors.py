@@ -36,6 +36,15 @@ class VersionNotSpecified(Exception):
         return f"A version_file was specified for a local dependency, but '{{version}}' not found in the name: {self.name}"
 
 
+class FailedToGetNameAndVersion(Exception):
+    def __init__(self, name):
+        super().__init__()
+        self.name = name
+
+    def __str__(self):
+        return f"A version_file was specified for a local dependency, but couldn't split name and version specifier from result: {self.name}"
+
+
 class InvalidVersion(Exception):
     def __init__(self, want):
         super().__init__()

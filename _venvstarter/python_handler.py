@@ -15,6 +15,9 @@ from . import helpers as hp
 regexes = {
     "version_specifier": re.compile(r"([^=><]+)(.*)"),
     "version_string": re.compile(r"^([^\.]+)(?:\.([^\.]+))?(?:\.([^\.]+))?.*"),
+    "name_version_split": re.compile(
+        r"^(?P<name>[a-zA-Z0-9][a-zA-Z0-9._-]*(\[[^\]]+\])?)(?P<version>.*)$"
+    ),
 }
 
 

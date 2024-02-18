@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 from . import errors
 from . import helpers as hp
@@ -235,8 +236,30 @@ class Starter(object):
         deps = self.deps if deps is None else deps
 
         for dep in deps:
+            original_dep = dep
+            name = None
+
+            if "@" in dep:
+                name, dep = dep.split("@")
+                name = name.strip()
+                dep = dep.strip()
+
             if "#" in dep:
-                dep = dict(arg.split("=", 1) for arg in dep.split("#", 1)[1].split("&"))["egg"]
+                if "egg" in dep:
+                    dep = dict(arg.split("=", 1) for arg in dep.split("#", 1)[1].split("&"))["egg"]
+                else:
+                    parsed = urlparse(dep)
+                    version_specifier = parsed.query
+                    if "?" in parsed.query:
+                        version_specifier = parsed.query.split("?")[0]
+
+                    if parsed.fragment and not name:
+                        name = parsed.fragment
+
+                    if not name:
+                        raise ValueError(f"Couldn't determine dependency name from {original_dep}")
+
+                    dep = f"{name}{version_specifier}"
 
             deps_to_use.append(dep)
 
