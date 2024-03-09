@@ -39,6 +39,12 @@ include = [
     "/venvstarter.py",
 ]
 
+[tool.hatch.build.targets.wheel]
+include = [
+    "/_venvstarter",
+    "/venvstarter.py",
+]
+
 [tool.black]
 line-length = 100
 include = '(\.py|^venv)$'
