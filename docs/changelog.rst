@@ -3,7 +3,7 @@ Changelog
 
 .. _release-0.12.2:
 
-0.12.2 - TBD
+0.12.2 - 9 March 2024
     * Improved the bootstrap script and example equivalent
     * Install greater than or equal to pip 24 now
     * Removed use of the ``egg=`` in a requirement line
