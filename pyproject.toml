@@ -8,7 +8,6 @@ dynamic = ["version"]
 description = "Tool to create virtualenvs, manage versions of packages in it and use it start a particular program"
 readme = "README.rst"
 license = "MIT"
-requires-python = ">= 3.7"
 authors = [
     { name = "Stephen Moore", email = "github@delfick.com" },
 ]
@@ -44,28 +43,6 @@ include = [
     "/venvstarter.py",
 ]
 
-[tool.black]
-line-length = 100
-include = '(\.py|^venv)$'
-exclude = '''
-/(
-     \.git
-   | \.tox
-   | dist
-   | tools/\.python
-   | docs/_build
-   | build
-)/
-'''
-
-[tool.isort]
-profile = "black"
-skip_glob = [
-   ".git/*",
-   ".tox/*",
-   "dist/*",
-   "tools/.python/*",
-   "tools/deps/*",
-   "docs/_build/*",
-   "build/*",
-]
+[tool.ruff]
+# Always generate Python 3.7-compatible code.
+target-version = "py37"

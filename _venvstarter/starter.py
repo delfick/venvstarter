@@ -121,7 +121,7 @@ class Starter(object):
         env=None,
         min_python_version=None,
         max_python_version=None,
-        packaging_version="23.2",
+        packaging_version="24.1",
     ):
         self.env = env
         self.deps = deps
