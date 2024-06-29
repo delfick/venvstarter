@@ -56,30 +56,30 @@ class Starter:
         is the folder the virtualenv sits in.
 
     min_python_version
-        An int, float, str, tuple or object with "version" of a tuple.
+        A str, tuple or object with "version" of a tuple.
 
         For example:
 
-        * 3
-        * 3.7
-        * "3.7.13"
-        * (3, 7, 13)
-        * distutils.StrictVersion("3.7.13")
+        * "3"
+        * "3.12"
+        * "3.12.1"
+        * (3, 12, 1)
+        * distutils.StrictVersion("3.12.1")
 
         Represents the minimum version of python needed for the virtualenv.
 
-        This will always default to 3.7.
+        This will default to "3.10".
 
     max_python_version
-        An int, float, str, tuple or object with "version" of a tuple.
+        A str, tuple or object with "version" of a tuple.
 
         For example:
 
-        * 3
-        * 3.7
-        * "3.7.13"
-        * (3, 7, 13)
-        * distutils.StrictVersion("3.7.13")
+        * "3"
+        * "3.12"
+        * "3.12.1"
+        * (3, 12, 1)
+        * distutils.StrictVersion("3.12.1")
 
         Represents the maximum version of python allowed for the virtualenv.
 
@@ -139,7 +139,7 @@ class Starter:
             self.deps = []
 
         if self.min_python_version is None:
-            self.min_python_version = 3.7
+            self.min_python_version = "3.10"
 
         handler = python_handler.PythonHandler(
             self.min_python_version, self.max_python_version
@@ -150,8 +150,8 @@ class Starter:
         if self.max_python is not None and self.min_python > self.max_python:
             raise Exception("min_python_version must be less than max_python_version")
 
-        if self.min_python < python_handler.Version(3.7):
-            raise Exception("Only support python3.7 and above")
+        if self.min_python < python_handler.Version("3.10"):
+            raise Exception("Only support python3.10 and above")
 
     @hp.memoized_property
     def venv_location(self):

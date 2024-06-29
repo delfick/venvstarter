@@ -5,6 +5,7 @@ Changelog
 
 0.13.0 - TBD
     * Now formatting and linting with ruff
+    * venvstarter only supports running in python3.10 or above
 
 .. _release-0.12.2:
 

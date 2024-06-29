@@ -65,8 +65,8 @@ def entry_point(script):
 
 
 class TestDifferentPrograms:
-    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    def test_can_be_None(self, version: str | float) -> None:
+    @pytest.mark.parametrize("version", ["3.10", "3.11", "3.12"])
+    def test_can_be_None(self, version: str) -> None:
         def script():
             return __import__("venvstarter").manager(None)
 
@@ -78,8 +78,8 @@ class TestDifferentPrograms:
             output = pytest.helpers.get_output(filename, "thing", "one", "two")
             assert output == "THINGY one two"
 
-    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    def test_can_be_an_entry_point(self, version: str | float) -> None:
+    @pytest.mark.parametrize("version", ["3.10", "3.11", "3.12"])
+    def test_can_be_an_entry_point(self, version: str) -> None:
         def script():
             return __import__("venvstarter").manager("thing")
 
@@ -87,8 +87,8 @@ class TestDifferentPrograms:
             output = pytest.helpers.get_output(filename, "one", "two").split("\n")
             assert output[-1] == "THINGY one two"
 
-    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    def test_can_be_a_binary(self, version: str | float) -> None:
+    @pytest.mark.parametrize("version", ["3.10", "3.11", "3.12"])
+    def test_can_be_a_binary(self, version: str) -> None:
         def script():
             return __import__("venvstarter").manager("python")
 
@@ -98,8 +98,8 @@ class TestDifferentPrograms:
             ).split("\n")
             assert output[-1] == "I am a python"
 
-    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    def test_can_be_a_list(self, version: str | float) -> None:
+    @pytest.mark.parametrize("version", ["3.10", "3.11", "3.12"])
+    def test_can_be_a_list(self, version: str) -> None:
         def script():
             return __import__("venvstarter").manager(["python", "-c"])
 
@@ -128,10 +128,8 @@ class TestDifferentPrograms:
                 output = pytest.helpers.get_output(filename).split("\n")
                 assert output[-1] == '    print("this should be last!")'
 
-    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    def test_can_be_a_function_that_does_not_do_anything(
-        self, version: str | float
-    ) -> None:
+    @pytest.mark.parametrize("version", ["3.10", "3.11", "3.12"])
+    def test_can_be_a_function_that_does_not_do_anything(self, version: str) -> None:
         def script():
             def runme(venv_location, args):
                 print(venv_location)
@@ -142,10 +140,8 @@ class TestDifferentPrograms:
             output = pytest.helpers.get_output(filename, "tongue").split("\n")
             assert output[-1] == str(Path(filename).parent / ".venv")
 
-    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    def test_can_be_a_function_that_returns_a_path_to_run(
-        self, version: str | float
-    ) -> None:
+    @pytest.mark.parametrize("version", ["3.10", "3.11", "3.12"])
+    def test_can_be_a_function_that_returns_a_path_to_run(self, version: str) -> None:
         def script():
             def runme(venv_location, args):
                 return "python"

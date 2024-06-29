@@ -18,20 +18,15 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-
-      - name: Get pyenv
-        shell: bash
-        run: |
-          python3 -m pip install pyenv-win --target $HOME\\.pyenv
 
       - name: Update system pip
         shell: bash
@@ -51,11 +46,18 @@ jobs:
         id: python_cache
         uses: actions/cache/restore@v4
         with:
-          key: ${{ runner.os }}-python-3.7.9_3.8.10_3.9.13_3.10.5_3.11.0b4
+          key: ${{ runner.os }}-python-3.10.11_3.11.94_3.12.4
           path: |
             ~/.pyenv
           restore-keys:
             ${{ runner.os }}-python-
+
+      - name: Get pyenv
+        shell: bash
+        run: |
+          if [[ ! -d $HOME\\.pyenv ]]; then
+            python3 -m pip install pyenv-win --target $HOME\\.pyenv
+          fi
 
       - name: pyenv on PATH
         shell: bash
@@ -71,18 +73,15 @@ jobs:
           pyenv install --list
 
       - name: Install python versions
-        if: steps.python_cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
           set -e
 
           pyenv --version
 
-          pyenv install 3.7.9
-          pyenv install 3.8.10
-          pyenv install 3.9.13
-          pyenv install 3.10.5
-          pyenv install 3.11.0b4
+          pyenv install 3.10.11 --skip-existing
+          pyenv install 3.11.9 --skip-existing
+          pyenv install 3.12.4 --skip-existing
 
           pyenv rehash
 
@@ -91,7 +90,6 @@ jobs:
         uses: actions/cache/save@v4
         with:
           key: ${{ steps.python_cache.outputs.cache-primary-key }}
-          if: always()
           path: |
             ~/.pyenv
 
@@ -103,19 +101,15 @@ jobs:
           ROOT=~/.pyenv
           ls $ROOT
           pyenv whence python
-          V37=$(pyenv whence python3.7)
-          V38=$(pyenv whence python3.8)
-          V39=$(pyenv whence python3.9)
-          V310=$(pyenv whence python3.10)
-          V311="3.11.0b4"
+          V310=$(pyenv whence python3.10 | head -n1)
+          V311=$(pyenv whence python3.11 | head -n1)
+          V312=$(pyenv whence python3.12 | head -n1)
 
           cat <<EOF > pythons.json
           {
-            "python3.7": "~/.pyenv/pyenv-win/versions/$V37/python.exe",
-            "python3.8": "~/.pyenv/pyenv-win/versions/$V38/python.exe",
-            "python3.9": "~/.pyenv/pyenv-win/versions/$V39/python.exe",
             "python3.10": "~/.pyenv/pyenv-win/versions/$V310/python.exe",
-            "python3.11": "~/.pyenv/pyenv-win/versions/$V311/python.exe"
+            "python3.11": "~/.pyenv/pyenv-win/versions/$V311/python.exe",
+            "python3.12": "~/.pyenv/pyenv-win/versions/$V312/python.exe"
           }
           EOF
 

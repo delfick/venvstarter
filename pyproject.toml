@@ -44,5 +44,5 @@ include = [
 ]
 
 [tool.ruff]
-# Always generate Python 3.7-compatible code.
-target-version = "py37"
+# Always generate Python 3.10-compatible code.
+target-version = "py310"

@@ -8,12 +8,12 @@ pytestmark = pytest.mark.creation_tests
 
 
 class TestFindingTheRightVersion:
-    @pytest.mark.parametrize("version", [3.8, 3.9, "3.10", "3.11"])
+    @pytest.mark.parametrize("version", ["3.10", "3.11", "3.12"])
     def test_will_always_use_current_version_if_no_max_is_specified(
-        self, version: str | float
+        self, version: str
     ) -> None:
         def script():
-            __import__("venvstarter").manager("python").min_python("3.7").run()
+            __import__("venvstarter").manager("python").min_python("3.10").run()
 
         with pytest.helpers.PATH.configure(version, python="3.10", python3="3.10"):
             exe = pytest.helpers.pythons[version]
@@ -22,9 +22,9 @@ class TestFindingTheRightVersion:
             ) as filename:
                 pytest.helpers.assertPythonVersion(filename, str(version))
 
-    @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
+    @pytest.mark.parametrize("version", ["3.10", "3.11", "3.12"])
     def test_will_use_only_version_available_if_within_min_and_max(
-        self, version: str | float
+        self, version: str
     ) -> None:
         def script(version):
             __import__("venvstarter").manager("python").min_python(version).run()
@@ -42,19 +42,19 @@ class TestFindingTheRightVersion:
         self,
     ) -> None:
         def script():
-            __import__("venvstarter").manager("python").min_python(3.7).run()
+            __import__("venvstarter").manager("python").min_python("3.10").run()
 
         with pytest.helpers.PATH.configure(
-            3.7, 3.8, python3=3.7, python=3.7, mock_sys=3.7
+            "3.10", "3.11", python3="3.10", python="3.10", mock_sys="3.10"
         ):
             with pytest.helpers.make_script(script, prepare_venv=True) as filename:
-                pytest.helpers.assertPythonVersion(filename, "3.7")
+                pytest.helpers.assertPythonVersion(filename, "3.10")
 
                 with pytest.helpers.PATH.configure(
-                    3.7, 3.8, python3=3.8, python=3.8, mock_sys=3.8
+                    "3.10", "3.11", python3="3.12", python="3.12", mock_sys="3.12"
                 ):
                     pytest.helpers.write_script(script, filename=filename)
-                    pytest.helpers.assertPythonVersion(filename, "3.7")
+                    pytest.helpers.assertPythonVersion(filename, "3.10")
 
                 def break_location(location):
                     assert location.exists()
@@ -73,30 +73,35 @@ class TestFindingTheRightVersion:
                     break_location(scripts_folder / "bin" / "python")
 
                 with pytest.helpers.PATH.configure(
-                    3.7, 3.8, python3=3.8, python=3.8, mock_sys=3.8
+                    "3.10", "3.11", python3="3.12", python="3.12", mock_sys="3.12"
                 ):
                     pytest.helpers.write_script(script, filename=filename)
-                    pytest.helpers.assertPythonVersion(filename, "3.8")
+                    pytest.helpers.assertPythonVersion(filename, "3.12")
 
     def test_can_force_the_virtualenv_to_get_a_new_version(self) -> None:
         def script():
-            __import__("venvstarter").manager("python").min_python(3.7).run()
+            __import__("venvstarter").manager("python").min_python("3.10").run()
 
         with pytest.helpers.PATH.configure(
-            3.7, 3.8, python3=3.7, python=3.7, mock_sys=3.7
+            "3.10", "3.11", python3="3.10", python="3.10", mock_sys="3.10"
         ):
             with pytest.helpers.make_script(script, prepare_venv=True) as filename:
-                pytest.helpers.assertPythonVersion(filename, "3.7")
+                pytest.helpers.assertPythonVersion(filename, "3.10")
 
                 with pytest.helpers.PATH.configure(
-                    3.7, 3.8, 3.9, python3=3.9, python=3.9, mock_sys=3.9
+                    "3.10",
+                    "3.11",
+                    "3.12",
+                    python3="3.12",
+                    python="3.12",
+                    mock_sys="3.12",
                 ):
-                    pytest.helpers.assertPythonVersion(filename, "3.7")
+                    pytest.helpers.assertPythonVersion(filename, "3.10")
 
                     def script():
                         __import__("venvstarter").manager("python").min_python(
-                            3.8
+                            "3.11"
                         ).run()
 
                     pytest.helpers.write_script(script, filename=filename)
-                    pytest.helpers.assertPythonVersion(filename, "3.9")
+                    pytest.helpers.assertPythonVersion(filename, "3.12")

@@ -18,26 +18,71 @@ jobs:
 
     strategy:
       matrix:
-        python-version: [3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Get pyenv
-        uses: gabrielfalcao/pyenv-action@v18
+      - name: Restore pyenv cache cache
+        id: python_cache
+        uses: actions/cache/restore@v4
         with:
-          default: 3.10.12
-          versions: 3.7.17, 3.8.17, 3.9.17, 3.10.12, 3.11.4
+          key: ${{ runner.os }}-python-3.10.11_3.11.9_3.12.4
+          path: |
+            ~/.pyenv
+          restore-keys:
+            ${{ runner.os }}-python-
+
+      - name: Get pyenv
+        shell: bash
+        run: |
+          if [[ ! -d ~/.pyenv ]]; then
+            curl https://pyenv.run | bash
+          fi
+
+      - name: pyenv on PATH
+        shell: bash
+        run: |
+          export PYENV_ROOT="$HOME/.pyenv"
+          [[ -d $PYENV_ROOT/bin ]] && export PATH="$PYENV_ROOT/bin:$PATH"
+          eval "$(pyenv init -)"
+
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "PYENV_ROOT=$PYENV_ROOT" >> $GITHUB_ENV
 
       - name: Available pyenv versions
         shell: bash
         run: |
+          eval "$(pyenv init -)"
+          pyenv update
           pyenv install --list
+
+      - name: Install python versions
+        shell: bash
+        run: |
+          set -e
+
+          eval "$(pyenv init -)"
+          pyenv --version
+
+          pyenv install 3.10.11 --skip-existing
+          pyenv install 3.11.9 --skip-existing
+          pyenv install 3.12.4 --skip-existing
+
+          pyenv rehash
+
+      - name: Save pyenv cache
+        id: save_python_cache
+        uses: actions/cache/save@v4
+        with:
+          key: ${{ steps.python_cache.outputs.cache-primary-key }}
+          path: |
+            ~/.pyenv
 
       - name: Update system pip
         shell: bash
@@ -54,22 +99,19 @@ jobs:
         run: |
           set -e
 
+          eval "$(pyenv init -)"
           pyenv versions
-          V37=$(pyenv whence python3.7)
-          V38=$(pyenv whence python3.8)
-          V39=$(pyenv whence python3.9)
-          V310=$(pyenv whence python3.10)
-          V311=$(pyenv whence python3.11)
+          V310=$(pyenv whence python3.10 | head -n1)
+          V311=$(pyenv whence python3.11 | head -n1)
+          V312=$(pyenv whence python3.12 | head -n1)
 
           ROOT=$(pyenv root)
 
           cat <<EOF > pythons.json
           {
-            "python3.7": "$ROOT/versions/$V37/bin/python",
-            "python3.8": "$ROOT/versions/$V38/bin/python",
-            "python3.9": "$ROOT/versions/$V39/bin/python",
             "python3.10": "$ROOT/versions/$V310/bin/python",
-            "python3.11": "$ROOT/versions/$V311/bin/python"
+            "python3.11": "$ROOT/versions/$V311/bin/python",
+            "python3.12": "$ROOT/versions/$V312/bin/python"
           }
           EOF
 

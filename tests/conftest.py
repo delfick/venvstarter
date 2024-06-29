@@ -17,7 +17,7 @@ from venvstarter import FailedToGetOutput, PythonHandler
 
 this_dir = Path(__file__).parent
 
-regexes = {"version": re.compile(r"3\.(6|7|8|9|10|11)")}
+regexes = {"version": re.compile(r"3\.\d+")}
 
 
 class Pythons:
@@ -26,15 +26,15 @@ class Pythons:
 
     def __iter__(self):
         for key in sorted(self.locations):
-            yield float(key[len("python") :])
+            yield key[len("python") :]
 
     def __getitem__(self, key):
-        if not isinstance(key, (float, str)):
-            assert False, f"Can only get a python location using a float or string of 3.7, 3.8, etc. Used {key}"
+        if not isinstance(key, str):
+            assert False, f"Can only get a python location using a string of 3.10, 3.11, etc. Used {key} ({type(key)})"
 
         key = str(key)
         if not regexes["version"].match(key):
-            assert False, f"Can only get a python location using a float or string of 3.7, 3.8, etc. Used {key}"
+            assert False, f"Can only get a python location using a string of 3.10, 3.11, etc. Used {key}"
 
         return self.locations[f"python{key}"]
 
@@ -54,7 +54,7 @@ class PythonsFinder:
 
         if not isinstance(pythons, dict):
             pytest.exit(
-                'The pythons.json must be a dictionary of {"python3.7": <location>, "python3.7": <location>, ...}'
+                'The pythons.json must be a dictionary of {"python3.10": <location>, "python3.11": <location>, ...}'
             )
 
         missing = want - set(pythons)
@@ -153,7 +153,7 @@ class PythonsFinder:
                     return False
 
     def find(self):
-        want = set(["python3.7", "python3.8", "python3.9", "python3.10", "python3.11"])
+        want = set(["python3.10", "python3.11", "python3.12"])
         pythons = self.pythons_json(want)
         for k in want:
             location = self.normalise_python_location(pythons, k)
