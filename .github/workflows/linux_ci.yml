@@ -2,7 +2,15 @@
 
 name: Tests on Linux
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  pull_request: {}
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-linux_ci
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -13,7 +21,7 @@ jobs:
         python-version: [3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -21,7 +29,10 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Get pyenv
-        uses: gabrielfalcao/pyenv-action@v16
+        uses: gabrielfalcao/pyenv-action@v18
+        with:
+          default: 3.10.12
+          versions: 3.7.17, 3.8.17, 3.9.17, 3.10.12, 3.11.4
 
       - name: Available pyenv versions
         shell: bash
@@ -38,38 +49,6 @@ jobs:
         run: |
           VENVSTARTER_ONLY_MAKE_VENV=1 ./test.sh
           tools/.python/bin/python -m pip install pip>=23 --upgrade
-
-      - name: Restore pyenv cache cache
-        id: python_cache
-        uses: actions/cache/restore@v3
-        with:
-          key: ${{ runner.os }}-python-3.7.17_3.8.17_3.9.17_3.10.12_3.11.4
-          path: |
-            /opt/hostedtoolcache/pyenv_root
-          restore-keys:
-            ${{ runner.os }}-python-
-
-      - name: Install python versions
-        if: steps.python_cache.outputs.cache-hit != 'true'
-        run: |
-          set -e
-
-          pyenv --version
-
-          for version in 3.7.17 3.8.17 3.9.17 3.10.12 3.11.4; do
-            pyenv install $version
-          done
-
-          pyenv rehash
-
-      - name: Save pyenv cache
-        id: save_python_cache
-        uses: actions/cache/save@v3
-        with:
-          key: ${{ steps.python_cache.outputs.cache-primary-key }}
-          if: always()
-          path: |
-            /opt/hostedtoolcache/pyenv_root
 
       - name: Find python versions
         run: |

@@ -2,7 +2,15 @@
 
 name: Tests on MacOS
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  pull_request: {}
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-mac_ci
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -13,7 +21,7 @@ jobs:
         python-version: [3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -26,7 +34,10 @@ jobs:
           sudo chmod -R a+rwx /opt
 
       - name: Get pyenv
-        uses: gabrielfalcao/pyenv-action@v16
+        uses: gabrielfalcao/pyenv-action@v18
+        with:
+          default: 3.10.12
+          versions: 3.7.17, 3.8.17, 3.9.17, 3.10.12, 3.11.4
 
       - name: Available pyenv versions
         shell: bash
@@ -44,44 +55,6 @@ jobs:
           VENVSTARTER_ONLY_MAKE_VENV=1 ./test.sh
           tools/.python/bin/python -m pip install pip>=23 --upgrade
 
-      - name: Restore pyenv cache cache
-        id: python_cache
-        uses: actions/cache/restore@v3
-        with:
-          key: ${{ runner.os }}-python-3.7.17_3.8.17_3.9.17_3.10.12_3.11.4
-          path: |
-            /opt/hostedtoolcache/pyenv_root
-            ~/hostedtoolcache/pyenv_root
-          restore-keys:
-            ${{ runner.os }}-python-
-
-      - name: Install python versions
-        if: steps.python_cache.outputs.cache-hit != 'true'
-        run: |
-          set -e
-
-          pyenv --version
-
-          unset CPPFLAG
-          unset LDFLAGS
-          unset CFLAGS
-
-          for version in 3.7.17 3.8.17 3.9.17 3.10.12 3.11.4; do
-            pyenv install $version
-          done
-
-          pyenv rehash
-
-      - name: Save pyenv cache
-        id: save_python_cache
-        uses: actions/cache/save@v3
-        with:
-          key: ${{ steps.python_cache.outputs.cache-primary-key }}
-          if: always()
-          path: |
-            /opt/hostedtoolcache/pyenv_root
-            ~/hostedtoolcache/pyenv_root
-
       - name: Find python versions
         run: |
           set -e
@@ -95,7 +68,7 @@ jobs:
 
           ROOT=$(pyenv root)
 
-          cat <<eof > pythons.json
+          cat <<EOF > pythons.json
           {
             "python3.7": "$ROOT/versions/$V37/bin/python",
             "python3.8": "$ROOT/versions/$V38/bin/python",
@@ -103,9 +76,9 @@ jobs:
             "python3.10": "$ROOT/versions/$V310/bin/python",
             "python3.11": "$ROOT/versions/$V311/bin/python"
           }
-          eof
+          EOF
 
-      - name: found pythons
+      - name: Found pythons
         run: |
           cat pythons.json
 
@@ -114,6 +87,6 @@ jobs:
         run: |
           python3 -m pip install -e '.[tests]'
 
-      - name: run the tests
+      - name: Run the tests
         run: |
           ./test.sh

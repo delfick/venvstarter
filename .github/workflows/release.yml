@@ -3,13 +3,16 @@ on:
 
 name: Release Packages
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Create the package
     runs-on: ubuntu-latest
     environment: github_release
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v4
         with:
@@ -27,12 +30,11 @@ jobs:
           echo "versiondash=$versiondash" >> $GITHUB_OUTPUT
 
       - id: create-release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           name: venvstarter ${{ steps.version.outputs.version }}
           body: "https://venvstarter.readthedocs.io/en/latest/changelog.html#release-${{ steps.version.outputs.versiondash }}"
           tag_name: "release-${{ steps.version.outputs.version }}"
-          token: ${{ secrets.GITHUB_TOKEN }}
           fail_on_unmatched_files: true
           draft: false
           prerelease: false

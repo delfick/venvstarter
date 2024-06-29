@@ -2,7 +2,15 @@
 
 name: Tests on Windows
 
-on: [push, pull_request, workflow_dispatch]
+on:
+  pull_request: {}
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-windows_ci
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -13,7 +21,7 @@ jobs:
         python-version: [3.7, 3.8, 3.9, "3.10", "3.11", "3.12"]
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -41,7 +49,7 @@ jobs:
 
       - name: Restore pyenv cache cache
         id: python_cache
-        uses: actions/cache/restore@v3
+        uses: actions/cache/restore@v4
         with:
           key: ${{ runner.os }}-python-3.7.9_3.8.10_3.9.13_3.10.5_3.11.0b4
           path: |
@@ -59,6 +67,7 @@ jobs:
       - name: Available pyenv versions
         shell: bash
         run: |
+          pyenv update
           pyenv install --list
 
       - name: Install python versions
@@ -79,7 +88,7 @@ jobs:
 
       - name: Save pyenv cache
         id: save_python_cache
-        uses: actions/cache/save@v3
+        uses: actions/cache/save@v4
         with:
           key: ${{ steps.python_cache.outputs.cache-primary-key }}
           if: always()
