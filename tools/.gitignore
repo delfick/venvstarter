@@ -1,2 +1,3 @@
 deps
 __manual_virtualenv__
+requirements.local.txt

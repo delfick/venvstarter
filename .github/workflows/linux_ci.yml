@@ -84,17 +84,6 @@ jobs:
           path: |
             ~/.pyenv
 
-      - name: Update system pip
-        shell: bash
-        run: |
-          python3 -m pip install pip>=23 --upgrade
-
-      - name: Install venvstarter in venv
-        shell: bash
-        run: |
-          VENVSTARTER_ONLY_MAKE_VENV=1 ./test.sh
-          tools/.python/bin/python -m pip install pip>=23 --upgrade
-
       - name: Find python versions
         run: |
           set -e
@@ -116,14 +105,10 @@ jobs:
           EOF
 
       - name: Found pythons
-        run: |
-          cat pythons.json
+        run: cat pythons.json
 
-      - name: Install venvstarter in system
-        shell: bash
-        run: |
-          python3 -m pip install -e '.[tests]'
+      - name: Install venv
+        run: ./run.sh --venvstarter-venv-only
 
       - name: Run the tests
-        run: |
-          ./test.sh
+        run: ./test.sh

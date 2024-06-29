@@ -8,7 +8,7 @@ fi
 TOOLS="$VENVSTARTER_PROJECT_ROOT/tools"
 
 if [ ! -d "$TOOLS/deps/uv-venv" ]; then
-    if ! "$TOOLS/bootstrap_uv.sh" --version; then
+    if ! "$TOOLS/bootstrap_uv.sh" venv "$TOOLS/deps/uv-venv"; then
         echo "Failed to bootstrap uv"
     fi
 fi
@@ -18,16 +18,17 @@ if [ ! -f "$TOOLS/deps/venvstarter/bootstrap.py" ]; then
 fi
 
 if [ ! -f "$TOOLS/deps/venvstarter/bootstrap.py" ]; then
-    if ! "$TOOLS/bootstrap_uv.sh" pip install -t "$TOOLS/deps"; then
+    if ! "$TOOLS/bootstrap_uv.sh" pip install --target "$TOOLS/deps" -p "$TOOLS/deps/uv-venv/bin/python"; then
         echo "Failed to ensure we have venvstarter"
         exit 1
     fi
 fi
 
-"$TOOLS/deps/uv-venv/bin/python" "$TOOLS/../venvstarter/bootstrap.py" \
+"$TOOLS/deps/uv-venv/bin/python" "$TOOLS/deps/venvstarter/bootstrap.py" \
     --venvstarter-python ">=3.10" \
     --venvstarter-version "venvstarter>=0.13.0" \
-    --venvstarter-manager "./tools/manager.py" \
+    --venvstarter-deps-manager "./tools/manage_deps.py" \
+    --venvstarter-tools-manager "./tools/manage_tools.py" \
     --venvstarter-uv "./tools/bootstrap_uv.sh" \
     --venvstarter-manual-marker "./tools/__manual_virtualenv__" \
     --venvstarter-venv-location "./.venv" \

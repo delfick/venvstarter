@@ -11,12 +11,21 @@ license = "MIT"
 authors = [
     { name = "Stephen Moore", email = "github@delfick.com" },
 ]
+dependencies = [
+    "packaging>=24.1",
+]
 
 [project.optional-dependencies]
 tests = [
     "pytest-helpers-namespace==2021.12.29",
     "pytest-parallel==0.1.1",
     "pytest>=7.2.0",
+]
+dev = [
+    "ruff==0.5.0",
+    "tox==4.15.1",
+    "remote-pdb==2.1.0",
+    "mypy==1.10.1",
 ]
 
 [project.urls]
@@ -43,3 +52,7 @@ include = [
 [tool.ruff]
 # Always generate Python 3.10-compatible code.
 target-version = "py310"
+
+[tool.mypy]
+strict = true
+exclude = "tests"

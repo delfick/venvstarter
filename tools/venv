@@ -6,16 +6,18 @@ if [ -z "$VENVSTARTER_PROJECT_ROOT" ]; then
 fi
 
 TOOLS="$VENVSTARTER_PROJECT_ROOT/tools"
+
 if [ ! -d "$TOOLS/deps/uv-venv" ]; then
-    if ! "$TOOLS/bootstrap_uv.sh" --version; then
+    if ! "$TOOLS/bootstrap_uv.sh" venv "$TOOLS/deps/uv-venv"; then
         echo "Failed to bootstrap uv"
     fi
 fi
 
 "$TOOLS/deps/uv-venv/bin/python" "$TOOLS/../venvstarter/bootstrap.py" \
     --venvstarter-python ">=3.10" \
-    --venvstarter-version "-e ." \
-    --venvstarter-manager "./tools/manager.py" \
+    --venvstarter-version "-e file://$VENVSTARTER_PROJECT_ROOT#egg=venvstarter" \
+    --venvstarter-deps-manager "./tools/manage_deps.py" \
+    --venvstarter-tools-manager "./tools/manage_tools.py" \
     --venvstarter-uv "./tools/bootstrap_uv.sh" \
     --venvstarter-manual-marker "./tools/__manual_virtualenv__" \
     --venvstarter-venv-location "./.venv" \

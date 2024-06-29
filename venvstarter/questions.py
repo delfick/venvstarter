@@ -1,36 +1,11 @@
-def ensure_packaging_module(packaging_version):
-    import importlib
-    import os
-    import sys
-
-    try:
-        __import__("packaging")
-    except ImportError:
-        os.system(f"{sys.executable} -m pip install packaging")
-
-    import packaging
-    from packaging.specifiers import SpecifierSet
-
-    if not any(str(packaging_version).startswith(ch) for ch in ("=", ">", "<")):
-        packaging_version = f"=={packaging_version}"
-
-    specifier = SpecifierSet(packaging_version)
-
-    if packaging.__version__ not in specifier:
-        os.system(f"{sys.executable} -m pip install 'packaging{specifier}'")
-        importlib.reload(packaging)
-        return __import__("packaging")
-    else:
-        return packaging
-
-
-def determine_if_needs_installation(deps, no_binary, packaging_version):
+def determine_if_needs_installation(
+    uv: str, deps: list[str], no_binary: list[str]
+) -> None:
     import importlib
     import sys
     from collections import defaultdict
     from importlib.metadata import PackageNotFoundError, requires, version
 
-    ensure_packaging_module(packaging_version)
     from packaging.requirements import Requirement
 
     need = defaultdict(list)
@@ -69,12 +44,12 @@ def determine_if_needs_installation(deps, no_binary, packaging_version):
         for tag in ("", *req.extras):
             for dist_dep in requires(req_name) or []:
                 dist_req = Requirement(dist_dep)
-                if dist_req.marker and not dist_req.marker.evaluate({"tag": tag}):
+                if dist_req.marker and not dist_req.marker.evaluate({"extra": tag}):
                     continue
 
                 dist_req.extras = set()
                 dist_dep = str(dist_req)
-                deps_list.append(dist_dep)
+                deps_list.append(dist_dep.split(";", 1)[0])
 
     for name, specifiers in need.items():
         installed = have[name]
@@ -87,7 +62,8 @@ def determine_if_needs_installation(deps, no_binary, packaging_version):
                 raise SystemExit(1)
 
     for name in no_binary:
-        if importlib.import_module(name).__file__.endswith(".so"):
+        mod = importlib.import_module(name)
+        if mod and mod.__file__ and mod.__file__.endswith(".so"):
             sys.stderr.write(f"{name} needs to not be a binary installation\\n\\n")
             sys.stderr.flush()
             raise SystemExit(1)

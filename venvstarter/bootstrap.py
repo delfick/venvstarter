@@ -6,11 +6,19 @@ import shutil
 import subprocess
 import sys
 from itertools import chain
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    Callable = Callable
 
 
-def python_from(
-    venv_folder,  # type: pathlib.Path
-):  # type: pathlib.Path | None
+def python_from(venv_folder):
+    # type: (pathlib.Path) -> pathlib.Path | None
+    if venv_folder.name in ("python", "python3") and venv_folder.is_file():
+        return venv_folder
+
     if os.name == "nt":
         location = venv_folder / "Scripts" / "python"
     else:
@@ -28,13 +36,12 @@ def python_from(
 
 
 class PythonDiscovery:
-    def __init__(
-        self,
-        python_acceptable,  # type: Callable[[pathlib.Path | str], bool]
-    ):  # type: None
+    def __init__(self, python_acceptable):
+        # type: (Callable[[pathlib.Path | str], bool]) -> None
         self.python_acceptable = python_acceptable
 
-    def discover(self):  # type: pathlib.Path | None
+    def discover(self):
+        # type: () -> pathlib.Path | None
         python = self.try_path()
 
         if not python:
@@ -44,9 +51,10 @@ class PythonDiscovery:
 
         return python
 
-    def try_asdf(self):  # type: pathlib.Path |None
+    def try_asdf(self):
+        # type: () -> pathlib.Path | None
         if not shutil.which("asdf"):
-            return
+            return None
 
         want = None  # type: str | None
 
@@ -56,7 +64,7 @@ class PythonDiscovery:
                 ["asdf", "list", "python"], check=True, capture_output=True
             )
         except subprocess.CalledProcessError:
-            return
+            return None
         else:
             versions = set()  # type: set[str]
             for version in process.stdout.decode().split("\n"):
@@ -80,21 +88,22 @@ class PythonDiscovery:
                     break
 
         if want is None:
-            return
+            return None
 
         try:
             process = subprocess.run(
                 ["asdf", "where", "python", want], check=True, capture_output=True
             )
         except subprocess.CalledProcessError:
-            return
+            return None
         else:
             print(f"## Using python {want} from asdf")
-            return pathlib.Path(process.stdout.decode())
+            return pathlib.Path(process.stdout.decode().strip())
 
-    def try_pyenv(self):  # type: pathlib.Path |None
+    def try_pyenv(self):
+        # type: () -> pathlib.Path | None
         if not shutil.which("pyenv"):
-            return
+            return None
 
         want = None  # type: str | None
 
@@ -104,7 +113,7 @@ class PythonDiscovery:
                 ["pyenv", "versions"], check=True, capture_output=True
             )
         except subprocess.CalledProcessError:
-            return
+            return None
         else:
             versions = set()  # type: set[str]
             for version in process.stdout.decode().split("\n"):
@@ -130,7 +139,7 @@ class PythonDiscovery:
                     break
 
         if want is None:
-            return
+            return None
 
         try:
             process = subprocess.run(
@@ -140,44 +149,50 @@ class PythonDiscovery:
                 env={**os.environ, "PYENV_VERSION": want},
             )
         except subprocess.CalledProcessError:
-            return
+            return None
         else:
             print(f"## Using python {want} from pyenv")
-            return pathlib.Path(process.stdout.decode())
+            return pathlib.Path(process.stdout.decode().strip())
 
-    def try_path(self):  # type: pathlib.Path |None
+    def try_path(self):
+        # type: () -> pathlib.Path | None
         if self.python_acceptable(pathlib.Path(sys.executable)):
             return pathlib.Path(sys.executable)
 
         py3 = shutil.which("python3")
-        if py3 and self.python_acceptable(py3):
-            return pathlib.Path(py3)
+        if py3 and self.python_acceptable(pathlib.Path(py3.strip())):
+            return pathlib.Path(py3.strip())
 
         py = shutil.which("python")
-        if py and self.python_acceptable(py):
-            return pathlib.Path(py)
+        if py and self.python_acceptable(pathlib.Path(py.strip())):
+            return pathlib.Path(py.strip())
+
+        return None
 
 
 class Bootstrap:
     def __init__(
         self,
-        project_root,  # type: pathlib.Path
-        python_version,  # type: str
-        version,  # type :str
-        manager,  # type:pathlib.Path
-        uv,  # type:pathlib.Path
-        program_args,  # type: list[str]
-        venv_location,  # type: pathlib.Path
-        original_venv,  # type: pathlib.Path | None
-        get_activate_script,  # type: pathlib.Path | None
-        venv_only,  # type: bool
-        manual_marker=None,  # type: pathlib.Path | None
-    ):  # type: None
+        project_root,
+        python_version,
+        version,
+        deps_manager,
+        tools_manager,
+        uv,
+        program_args,
+        venv_location,
+        original_venv,
+        get_activate_script,
+        venv_only,
+        manual_marker=None,
+    ):
+        # type: (pathlib.Path, str, str, pathlib.Path | None, pathlib.Path | None, pathlib.Path, list[str], pathlib.Path, pathlib.Path | None, pathlib.Path | None, bool, pathlib.Path | None) -> None
         self.uv = uv
         self.python_version = python_version
         self.venv_only = venv_only
         self.version = version
-        self.manager = manager
+        self.deps_manager = deps_manager
+        self.tools_manager = tools_manager
         self.project_root = project_root
         self.program_args = program_args
         self.venv_location = venv_location
@@ -185,20 +200,8 @@ class Bootstrap:
         self.manual_marker = manual_marker
         self.get_activate_script = get_activate_script
 
-    def __repr__(self):  # type: str
-        return "\n".join(
-            [
-                "Bootstrap:",
-                f"{self.project_root=}",
-                f"{self.python=}",
-                f"{self.version=}",
-                f"{self.manager=}",
-                f"{self.uv=}",
-                f"{self.program_args=}",
-            ]
-        )
-
-    def bootstrap(self):  # type: None
+    def bootstrap(self):
+        # type: () -> None
         needs_packaging = False
         try:
             __import__("packaging")
@@ -229,19 +232,21 @@ class Bootstrap:
                     {**os.environ, "VENVSTARTER_ASSUME_PACKAGING": "1"},
                 )
 
+        previous_manual_venv = None  # type: pathlib.Path | None
+        if self.manual_marker and self.manual_marker.exists():
+            previous_manual_venv = pathlib.Path(self.manual_marker.read_text())
+
         if not self.venv_location.exists():
             python = self._ensure_python()
-            subprocess.run(
-                [self.uv, "venv", str(self.venv_location), "-p", str(python)],
-                check=True,
-            )
-
-        python = python_from(self.venv_location)
-        if not python:
-            sys.exit("!!! Failed to get a virtualenv to use")
+        else:
+            found = python_from(self.venv_location)
+            if not found:
+                sys.exit("!!! Failed to get a virtualenv to use")
+            else:
+                python = found
 
         ensure_venvstarter = True
-        if self.version == "-e ." or self.version.startswith("-e .["):
+        if self.version.startswith("-e"):
             try:
                 process = subprocess.run(
                     [self.uv, "pip", "freeze", "-p", str(python)],
@@ -251,8 +256,10 @@ class Bootstrap:
             except subprocess.CalledProcessError:
                 pass
             else:
-                version = f"-e file://{self.project_root}{self.version[4:]}"
-                if version.encode() in process.stdout:
+                if any(
+                    line.startswith(self.version.encode())
+                    for line in process.stdout.split(b"\n")
+                ):
                     ensure_venvstarter = False
 
         if ensure_venvstarter:
@@ -269,30 +276,73 @@ class Bootstrap:
                 cwd=self.project_root,
             )
 
+        env = {**os.environ, "VENVSTARTER_UV": str(self.uv)}
+
+        # Fix a bug whereby the virtualenv has the wrong sys.executable
+        if "__PYVENV_LAUNCHER__" in env:
+            del env["__PYVENV_LAUNCHER__"]
+
+        if self.deps_manager:
+            install_deps = True
+            if self.manual_marker is not None and self.manual_marker.exists():
+                if pathlib.Path(self.manual_marker.read_text().strip()) == previous_manual_venv:
+                    install_deps = False
+                else:
+                    print(
+                        f"Would you like to install this project into your venv ({python})?"
+                    )
+                    answer = None  # type: str | None
+                    while answer is None:
+                        try:
+                            answer = input("(y/n): ")
+                        except (EOFError, KeyboardInterrupt):
+                            sys.exit(1)
+                        else:
+                            if answer not in ("y", "n"):
+                                answer = None
+                                print("!!! Please say 'y' or 'n'")
+
+                    install_deps = answer == "y"
+
+            if install_deps or "--venvstarter-force-deps" in self.program_args:
+                try:
+                    subprocess.run(
+                        [str(python), str(self.deps_manager), *self.program_args],
+                        env=env,
+                        check=True,
+                    )
+                except subprocess.CalledProcessError:
+                    sys.exit("!!! Failed to update dependencies")
+
         if self.venv_only:
-            return
+            return None
 
         if self.get_activate_script:
             self.get_activate_script.write_text(str(python.parent / "activate"))
             sys.exit(0)
 
+        tools_manager = self.tools_manager
+        if tools_manager is None:
+            os.execve(str(python), [str(python), *self.program_args], env)
+
+        if str(tools_manager).startswith(":"):
+            tools_manager = pathlib.Path(
+                str(tools_manager).replace(":", f"{str(python.parent)}{os.sep}", 1)
+            )
+
         os.execve(
-            str(python),
-            [str(python), str(self.manager), *self.program_args],
-            {**os.environ, "VENVSTARTER_UV": str(self.uv)},
+            str(python), [str(python), str(tools_manager), *self.program_args], env
         )
 
-    def compare_versions(
-        self,
-        have,  # type: str
-        want,  # type: str
-    ):  # type: bool
+    def compare_versions(self, have, want):
+        # type: (str, str) -> bool
         from packaging.specifiers import SpecifierSet
         from packaging.version import Version
 
         return Version(have) in SpecifierSet(want)
 
-    def _ensure_python(self):  # type: None
+    def _ensure_python(self):
+        # type: () -> pathlib.Path
         python = None  # type: pathlib.Path | None
         if self.manual_marker is not None:
             if self.manual_marker.exists():
@@ -336,12 +386,21 @@ class Bootstrap:
             print("!!! Failed to find a suitable python")
             sys.exit(1)
 
+        if not self.venv_location.exists():
+            subprocess.run(
+                [self.uv, "venv", str(self.venv_location), "-p", str(python)],
+                check=True,
+            )
+            python = python_from(self.venv_location)
+            if not python:
+                sys.exit(
+                    f"!!! Failed to find python in the venv we just created: {self.venv_location}"
+                )
+
         return python
 
-    def _ask_about_python(
-        self,
-        manual_marker,  # type: pathlib.Path
-    ):  # type: pathlib.Path | None
+    def _ask_about_python(self, manual_marker):
+        # type: (pathlib.Path) -> pathlib.Path | None
         print("How should we proceed?:")
         print("1) Let venvstarter manage the virtualenv")
         print(
@@ -369,11 +428,14 @@ class Bootstrap:
             if self.original_venv is None:
                 print("!!! No active virtual env already, activate one and try again")
                 sys.exit(1)
-            provided = self.original_venv
+            provided = python_from(self.original_venv)
+            if not provided:
+                print("!!! Failed to find python from active virtual env")
+                sys.exit(1)
         else:
             while True:
                 try:
-                    provided = input("Enter path to virtualenv to use: ")
+                    provided = pathlib.Path(input("Enter path to virtualenv to use: ").strip())
                 except (EOFError, KeyboardInterrupt):
                     sys.exit(1)
                 if not provided.exists():
@@ -384,20 +446,24 @@ class Bootstrap:
         found = python_from(provided)
         if found:
             print(f"## To go back to a managed virtualenv, delete '{manual_marker}'")
+            manual_marker.write_text(str(found))
             return found
 
-        sys.exit("!! Failed to find a python to use in '{provided}'")
+        sys.exit(f"!! Failed to find a python to use in '{provided}'")
 
-    def _python_version_is_acceptable(
-        self,
-        python,  # type: pathlib.Path | str
-    ):  # type: bool
+    def _python_version_is_acceptable(self, python):
+        # type: (pathlib.Path | str) -> bool
         if isinstance(python, str):
             return self.compare_versions(python.strip(), self.python_version)
 
+        if not python.is_file():
+            return False
+
         try:
             process = subprocess.run(
-                [str(python), "--version"], capture_output=True, check=True
+                [str(python), "-c", 'print(__import__("sys").version.split(" ")[0])'],
+                capture_output=True,
+                check=True,
             )
         except subprocess.CalledProcessError as error:
             print("!!! Failed to get python version")
@@ -409,21 +475,26 @@ class Bootstrap:
 
             return False
         else:
-            version = process.stdout.decode().split(" ")[1].strip()
+            version = process.stdout.decode().strip()
             return self.compare_versions(version, self.python_version)
 
 
 def make_parser(
-    default_project_root,  # type: pathlib.Path
-    default_python=">=3.10",  # type: str
-    default_venvstarter=">=0.13.0",  # type: str
-    default_manager=pathlib.Path("./manager.py"),  # type: pathlib.Path
-    default_uv=pathlib.Path("./bootstrap_uv.sh"),  # type: pathlib.Path
-    default_venv_location=pathlib.Path("./.python"),  # type: pathlib.Path
-    default_venv_only=False,  # type: bool
-    default_manual_marker=None,  # type:pathlib.Path | None
-    default_original_venv=None,  # type: pathlib.Path | None,
-):  # type: argparse.ArgumentParser
+    default_project_root,
+    default_python=">=3.10",
+    default_venvstarter=">=0.13.0",
+    default_deps_manager=None,
+    default_tools_manager=None,
+    default_uv=pathlib.Path("./bootstrap_uv.sh"),
+    default_venv_location=pathlib.Path("./.python"),
+    default_venv_only=False,
+    default_manual_marker=None,
+    default_original_venv=None,
+    default_get_activate_script=None,
+    default_assume_correct_deps=False,
+):
+    # type: (pathlib.Path, str, str, pathlib.Path | None, pathlib.Path | None, pathlib.Path, pathlib.Path, bool, pathlib.Path | None, pathlib.Path | None, pathlib.Path | None, bool) -> argparse.ArgumentParser
+
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
@@ -437,10 +508,16 @@ def make_parser(
         help="The version range for venvstarter acceptable for this environment",
     )
     parser.add_argument(
-        "--venvstarter-manager",
-        default=default_manager,
+        "--venvstarter-deps-manager",
+        default=default_deps_manager,
         type=pathlib.Path,
-        help="The path to the manager.py to use, relative to PROJECT_ROOT",
+        help="The path to the manager.py to use for ensuring dependencies are correct, relative to PROJECT_ROOT",
+    )
+    parser.add_argument(
+        "--venvstarter-tools-manager",
+        default=default_tools_manager,
+        type=pathlib.Path,
+        help="The path to the manager.py to use for determining what command to run, relative to PROJECT_ROOT",
     )
     parser.add_argument(
         "--venvstarter-uv",
@@ -468,14 +545,23 @@ def make_parser(
         help="The path to a file that would tell venvstarter to not manage the virtualenv",
     )
     parser.add_argument(
-        "--venvstarter-venv-only", action="store_true", help="Only create the venv"
+        "--venvstarter-venv-only",
+        action="store_true",
+        help="Only create the venv",
+        default=default_venv_only,
     )
     parser.add_argument(
         "--venvstarter-get-activate-script",
         type=pathlib.Path,
+        default=default_get_activate_script,
         help="Path to write the location of the activate script to for activating the virtual env",
     )
-
+    parser.add_argument(
+        "--venvstarter-assume-correct-deps",
+        action="store_true",
+        default=default_assume_correct_deps,
+        help="Don't check whether the dependencies are correct",
+    )
     parser.add_argument(
         "--venvstarter-original-venv",
         default=default_original_venv,
@@ -486,9 +572,8 @@ def make_parser(
     return parser
 
 
-def main(
-    argv=None,  # type: list[str] | None
-):  # type: None
+def main(argv=None):
+    # type: (list[str] | None) -> None
     if "VENVSTARTER_PROJECT_ROOT" not in os.environ:
         sys.exit(
             "venvstarter bootstrap requires a VENVSTARTER_PROJECT_ROOT environment variable"
@@ -506,7 +591,7 @@ def main(
         program_args = argv[double_dash + 1 :]
 
     parser = make_parser(
-        default_project_root=pathlib.Path(os.environ["VENVSTARTER_PROJECT_ROOT"])
+        default_project_root=pathlib.Path(os.environ["VENVSTARTER_PROJECT_ROOT"].strip())
     )
     args = parser.parse_args(venvstarter_args)
 
@@ -526,11 +611,14 @@ def main(
             default_original_venv=args.venvstarter_original_venv,
             default_python=args.venvstarter_python,
             default_venvstarter=args.venvstarter_version,
-            default_manager=args.venvstarter_manager,
+            default_deps_manager=args.venvstarter_deps_manager,
+            default_tools_manager=args.venvstarter_tools_manager,
             default_uv=args.venvstarter_uv,
             default_venv_location=args.venvstarter_venv_location,
             default_manual_marker=args.venvstarter_manual_marker,
             default_venv_only=args.venvstarter_venv_only,
+            default_get_activate_script=args.venvstarter_get_activate_script,
+            default_assume_correct_deps=args.venvstarter_assume_correct_deps,
         )
         args, program_args = parser.parse_known_args(
             [a for a in program_args if a not in ("-h", "--help")]
@@ -544,7 +632,17 @@ def main(
         project_root=project_root,
         python_version=args.venvstarter_python,
         version=args.venvstarter_version,
-        manager=project_root / args.venvstarter_manager,
+        deps_manager=(
+            project_root / args.venvstarter_deps_manager
+            if args.venvstarter_deps_manager
+            and not args.venvstarter_assume_correct_deps
+            else None
+        ),
+        tools_manager=(
+            project_root / args.venvstarter_tools_manager
+            if args.venvstarter_tools_manager
+            else None
+        ),
         uv=project_root / args.venvstarter_uv,
         venv_location=project_root / args.venvstarter_venv_location,
         manual_marker=project_root / args.venvstarter_manual_marker,
