@@ -28,6 +28,8 @@ else:
         upgrade = True
 
 if upgrade:
-    os.system(f"{sys.executable} -m pip install -U 'venvstarter=={wanted_version}' -t {deps_dir}")
+    os.system(
+        f"{sys.executable} -m pip install -U 'venvstarter=={wanted_version}' -t {deps_dir}"
+    )
 
 manager = runpy.run_path(str(deps_dir / "venvstarter.py"))["manager"]

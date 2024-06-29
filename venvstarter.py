@@ -25,6 +25,7 @@ with the rest of the arguments given on the command line.
     If you want to skip checking the versions of your dependencies, then set
     VENV_STARTER_CHECK_DEPS=0 in your environment.
 """
+
 from _venvstarter import manager
 from _venvstarter.errors import FailedToGetOutput
 from _venvstarter.python_handler import PythonHandler, Version
@@ -33,7 +34,9 @@ from _venvstarter.version import VERSION
 
 
 def ignite(*args, **kwargs):
-    raise RuntimeError("venvstarter.ignite has been removed, migrate to venvstarter.manager")
+    raise RuntimeError(
+        "venvstarter.ignite has been removed, migrate to venvstarter.manager"
+    )
 
 
 __all__ = [

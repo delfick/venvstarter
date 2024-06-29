@@ -1,4 +1,4 @@
-class memoized_property(object):
+class memoized_property:
     def __init__(self, func):
         self.func = func
         self.key = f".{self.func.__name__}"

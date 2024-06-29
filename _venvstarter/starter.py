@@ -9,12 +9,11 @@ import tempfile
 from pathlib import Path
 from urllib.parse import urlparse
 
-from . import errors
+from . import errors, python_handler, questions
 from . import helpers as hp
-from . import python_handler, questions
 
 
-class Starter(object):
+class Starter:
     """
     The main class that knows how to manage the virtualenv. It is recommended
     that :class:`manager` is used instead of directly using this class.
@@ -121,7 +120,7 @@ class Starter(object):
         env=None,
         min_python_version=None,
         max_python_version=None,
-        packaging_version="24.1",
+        packaging_version=">=24.1",
     ):
         self.env = env
         self.deps = deps
@@ -142,7 +141,9 @@ class Starter(object):
         if self.min_python_version is None:
             self.min_python_version = 3.7
 
-        handler = python_handler.PythonHandler(self.min_python_version, self.max_python_version)
+        handler = python_handler.PythonHandler(
+            self.min_python_version, self.max_python_version
+        )
         self.min_python = handler.min_python
         self.max_python = handler.max_python
 
@@ -209,7 +210,9 @@ class Starter(object):
 
         if not self.venv_location.exists():
             if python_exe is None:
-                python_exe = python_handler.PythonHandler(self.min_python, self.max_python).find()
+                python_exe = python_handler.PythonHandler(
+                    self.min_python, self.max_python
+                ).find()
 
             print("Creating virtualenv", file=sys.stderr)
             print(f"Destination: {self.venv_location}", file=sys.stderr)
@@ -246,7 +249,9 @@ class Starter(object):
 
             if "#" in dep:
                 if "egg" in dep:
-                    dep = dict(arg.split("=", 1) for arg in dep.split("#", 1)[1].split("&"))["egg"]
+                    dep = dict(
+                        arg.split("=", 1) for arg in dep.split("#", 1)[1].split("&")
+                    )["egg"]
                 else:
                     parsed = urlparse(dep)
                     version_specifier = parsed.query
@@ -257,7 +262,9 @@ class Starter(object):
                         name = parsed.fragment
 
                     if not name:
-                        raise ValueError(f"Couldn't determine dependency name from {original_dep}")
+                        raise ValueError(
+                            f"Couldn't determine dependency name from {original_dep}"
+                        )
 
                     dep = f"{name}{version_specifier}"
 
@@ -272,26 +279,26 @@ class Starter(object):
             [
                 inspect.getsource(questions.determine_if_needs_installation),
                 inspect.getsource(questions.ensure_packaging_module),
-                f"\ndetermine_if_needs_installation({json.dumps(deps_to_use)}, {json.dumps(no_binary)}, {self.packaging_version})",
+                f"\ndetermine_if_needs_installation({json.dumps(deps_to_use)}, {json.dumps(no_binary)}, '{self.packaging_version}')",
             ]
         )
         return handler.run_command(self.venv_python, question, check=False).returncode
 
     def find_deps_to_be_made_not_binary(self):
         handler = python_handler.PythonHandler()
-        question = """
+        question = f"""
             import importlib
 
-            for name in {0}:
+            for name in {json.dumps(self.no_binary)}:
                 try:
                     if importlib.import_module(name).__file__.endswith(".so"):
                         print(name)
                 except ImportError:
                     pass
-            """.format(
-            json.dumps(self.no_binary)
+            """
+        found = handler.run_command(self.venv_python, question, get_output=True).split(
+            "\n"
         )
-        found = handler.run_command(self.venv_python, question, get_output=True).split("\n")
         return [shlex.quote(name.strip()) for name in found if name.strip()]
 
     def install_deps(self, deps=None, check_no_binary=True):
@@ -311,18 +318,25 @@ class Starter(object):
                 if check_no_binary:
                     to_remove = self.find_deps_to_be_made_not_binary()
                     if to_remove:
-                        cmd = [str(self.venv_python), "-m", "pip", "uninstall", "-y", *to_remove]
+                        cmd = [
+                            str(self.venv_python),
+                            "-m",
+                            "pip",
+                            "uninstall",
+                            "-y",
+                            *to_remove,
+                        ]
                         subprocess.call(cmd, env=env)
 
                 reqs = tempfile.NamedTemporaryFile(
                     delete=False, suffix="venvstarter_requirements", dir="."
                 )
                 for dep in deps:
-                    reqs.write(f"\n{dep}".encode("utf-8"))
+                    reqs.write(f"\n{dep}".encode())
 
                 if check_no_binary:
                     for dep in self.no_binary:
-                        reqs.write(f"\n--no-binary {dep}".encode("utf-8"))
+                        reqs.write(f"\n--no-binary {dep}".encode())
 
                 reqs.close()
 
@@ -359,7 +373,10 @@ class Starter(object):
             return [self.venv_script(program)]
         elif isinstance(program, list):
             if program:
-                program = [self.venv_script(program[0], default=program[0]), *program[1:]]
+                program = [
+                    self.venv_script(program[0], default=program[0]),
+                    *program[1:],
+                ]
             return program
         else:
             raise Exception(f"Not sure what to do with this program: {program}")
@@ -378,9 +395,12 @@ class Starter(object):
 
             for here, vv in ev:
                 for k, v in vv.items():
-                    if not isinstance(v, (list, tuple)):
+                    if not isinstance(v, list | tuple):
                         normalised[k] = hp.do_format(
-                            v, here=str(here), home=str(home), venv_parent=str(venv_parent)
+                            v,
+                            here=str(here),
+                            home=str(home),
+                            venv_parent=str(venv_parent),
                         )
                     else:
                         normalised[k] = str(

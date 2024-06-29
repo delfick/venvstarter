@@ -8,7 +8,6 @@ import pytest
 @contextmanager
 def entry_point(script):
     with pytest.helpers.directory_creator() as creator:
-
         creator.add(
             "pyproject.toml",
             content="""
@@ -52,7 +51,9 @@ def entry_point(script):
         def decorator(path):
             def decorated(script):
                 script().add_local_dep(
-                    path, version_file=["thing", "__init__.py"], name="thinger=={version}"
+                    path,
+                    version_file=["thing", "__init__.py"],
+                    name="thinger=={version}",
                 ).run()
 
             return decorated
@@ -92,7 +93,9 @@ class TestDifferentPrograms:
             return __import__("venvstarter").manager("python")
 
         with entry_point(script) as filename:
-            output = pytest.helpers.get_output(filename, "-c", "print('I am a python')").split("\n")
+            output = pytest.helpers.get_output(
+                filename, "-c", "print('I am a python')"
+            ).split("\n")
             assert output[-1] == "I am a python"
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
@@ -101,7 +104,9 @@ class TestDifferentPrograms:
             return __import__("venvstarter").manager(["python", "-c"])
 
         with entry_point(script) as filename:
-            output = pytest.helpers.get_output(filename, "print('I am a snake')").split("\n")
+            output = pytest.helpers.get_output(filename, "print('I am a snake')").split(
+                "\n"
+            )
             assert output[-1] == "I am a snake"
 
         def script():
@@ -124,7 +129,9 @@ class TestDifferentPrograms:
                 assert output[-1] == '    print("this should be last!")'
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    def test_can_be_a_function_that_does_not_do_anything(self, version: str | float) -> None:
+    def test_can_be_a_function_that_does_not_do_anything(
+        self, version: str | float
+    ) -> None:
         def script():
             def runme(venv_location, args):
                 print(venv_location)
@@ -136,7 +143,9 @@ class TestDifferentPrograms:
             assert output[-1] == str(Path(filename).parent / ".venv")
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    def test_can_be_a_function_that_returns_a_path_to_run(self, version: str | float) -> None:
+    def test_can_be_a_function_that_returns_a_path_to_run(
+        self, version: str | float
+    ) -> None:
         def script():
             def runme(venv_location, args):
                 return "python"
@@ -144,7 +153,9 @@ class TestDifferentPrograms:
             return __import__("venvstarter").manager(runme)
 
         with entry_point(script) as filename:
-            output = pytest.helpers.get_output(filename, "-c", 'print("bye")').split("\n")
+            output = pytest.helpers.get_output(filename, "-c", 'print("bye")').split(
+                "\n"
+            )
             assert output[-1] == "bye"
 
         def script():

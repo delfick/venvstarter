@@ -11,7 +11,6 @@ pytestmark = pytest.mark.usage_tests
 class TestFindingTheRightVersion:
     def test_can_be_used_to_read_a_requirements_txt(self) -> None:
         with pytest.helpers.directory_creator() as creator:
-
             creator.add(
                 "requirements.txt",
                 content="""
@@ -37,7 +36,6 @@ class TestFindingTheRightVersion:
 
     def test_can_be_used_to_symlink_install_and_run_a_local_package(self) -> None:
         with pytest.helpers.directory_creator() as creator:
-
             creator.add(
                 "pyproject.toml",
                 content="""
@@ -80,7 +78,9 @@ class TestFindingTheRightVersion:
 
             def script(path):
                 __import__("venvstarter").manager("thing").add_local_dep(
-                    path, version_file=["thing", "__init__.py"], name="thinger=={version}"
+                    path,
+                    version_file=["thing", "__init__.py"],
+                    name="thinger=={version}",
                 ).run()
 
             with pytest.helpers.make_script(
@@ -165,7 +165,9 @@ class TestFindingTheRightVersion:
 
     def test_can_be_used_to_make_sure_a_dependency_is_not_binary(self) -> None:
         def script():
-            __import__("venvstarter").manager("python").add_pypi_deps("noseOfYeti[black]").run()
+            __import__("venvstarter").manager("python").add_pypi_deps(
+                "noseOfYeti[black]"
+            ).run()
 
         with pytest.helpers.make_script(script, prepare_venv=True) as filename:
             output = pytest.helpers.get_output(

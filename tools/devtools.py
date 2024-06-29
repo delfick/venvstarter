@@ -1,10 +1,10 @@
 import inspect
 import os
+import platform
 import shutil
 import sys
 import typing as tp
 from collections.abc import Callable
-import platform
 from pathlib import Path
 
 if platform.system() == "Windows":
@@ -20,8 +20,7 @@ here = Path(__file__).parent
 class Command:
     __is_command__: bool
 
-    def __call__(self, bin_dir: Path, args: list[str]) -> None:
-        ...
+    def __call__(self, bin_dir: Path, args: list[str]) -> None: ...
 
 
 def command(func: Callable[..., None]) -> Callable[..., None]:
@@ -61,7 +60,9 @@ class App:
             self.commands[args[0]](bin_dir, args[1:])
             return
 
-        sys.exit(f"Unknown command:\nAvailable: {sorted(self.commands)}\nWanted: {args}")
+        sys.exit(
+            f"Unknown command:\nAvailable: {sorted(self.commands)}\nWanted: {args}"
+        )
 
     @command
     def lint(self, bin_dir: Path, args: list[str]) -> None:
@@ -119,7 +120,16 @@ class App:
 
         os.chdir(docs_path)
 
-        run(*command, ".", "_build/html", "-b", "html", "-d", "_build/doctrees", *other_args)
+        run(
+            *command,
+            ".",
+            "_build/html",
+            "-b",
+            "html",
+            "-d",
+            "_build/doctrees",
+            *other_args,
+        )
 
 
 app = App()

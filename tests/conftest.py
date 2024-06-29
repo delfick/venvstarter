@@ -30,15 +30,11 @@ class Pythons:
 
     def __getitem__(self, key):
         if not isinstance(key, (float, str)):
-            assert (
-                False
-            ), f"Can only get a python location using a float or string of 3.7, 3.8, etc. Used {key}"
+            assert False, f"Can only get a python location using a float or string of 3.7, 3.8, etc. Used {key}"
 
         key = str(key)
         if not regexes["version"].match(key):
-            assert (
-                False
-            ), f"Can only get a python location using a float or string of 3.7, 3.8, etc. Used {key}"
+            assert False, f"Can only get a python location using a float or string of 3.7, 3.8, etc. Used {key}"
 
         return self.locations[f"python{key}"]
 
@@ -75,7 +71,7 @@ class PythonsFinder:
 
         _, version_info = PythonHandler().version_for(location, raise_error=True)
         assert version_info is not None
-        got = "python{0}.{1}".format(*version_info.version)
+        got = f"python{version_info.version[0]}.{version_info.version[1]}"
         if got != k:
             pytest.exit(f"Entry for {k} is for a different version of python ({got})")
 
@@ -103,7 +99,9 @@ class PythonsFinder:
         if created:
             subprocess.run([str(py), "-m", "ensurepip"], check=True)
 
-        subprocess.run([str(py), "-m", "pip", "install", "pip>=24", "--upgrade"], check=True)
+        subprocess.run(
+            [str(py), "-m", "pip", "install", "pip>=24", "--upgrade"], check=True
+        )
 
         if not py.exists():
             if errors:
@@ -122,7 +120,9 @@ class PythonsFinder:
     def ensure_venvstarter(self, python_exe):
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
-                PythonHandler().run_command(python_exe, "import venvstarter", cwd=tmpdir)
+                PythonHandler().run_command(
+                    python_exe, "import venvstarter", cwd=tmpdir
+                )
         except FailedToGetOutput:
             subprocess.run(
                 [str(python_exe), "-m", "pip", "install", "-e", str(this_dir.parent)],
@@ -130,11 +130,12 @@ class PythonsFinder:
             )
 
     def ensure_venvstarter_version(self, python_exe, venv_location, errors):
-
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 vsver = PythonHandler().get_output(
-                    python_exe, "import venvstarter; print(venvstarter.VERSION)", cwd=tmpdir
+                    python_exe,
+                    "import venvstarter; print(venvstarter.VERSION)",
+                    cwd=tmpdir,
                 )
         except FailedToGetOutput as error:
             if errors:
@@ -208,7 +209,8 @@ class PATH:
             )
             paths = [tmpdir]
 
-            link = lambda exe, *, end: self.link(tmpdir, paths, exe, end=end)
+            def link(exe, *, end):
+                return self.link(tmpdir, paths, exe, end=end)
 
             for version in versions:
                 link(self.pythons[version], end=str(version))
@@ -243,11 +245,15 @@ class PATH:
 
 
 def assertPythonVersion(python_exe, version):
-    _, got = PythonHandler().version_for(python_exe, raise_error=True, without_patch=True)
+    _, got = PythonHandler().version_for(
+        python_exe, raise_error=True, without_patch=True
+    )
     assert got == version, (got, version)
 
 
-def write_script(func, args="", *, filename, exe=None, prepare_venv=False, decorator=None):
+def write_script(
+    func, args="", *, filename, exe=None, prepare_venv=False, decorator=None
+):
     script = dedent(inspect.getsource(func))
 
     if decorator is not None:
@@ -309,7 +315,12 @@ def get_output(venvstarter_script_filename, *args):
     try:
         output = (
             subprocess.check_output(
-                [str(q) for q in PythonHandler().with_shebang(venvstarter_script_filename, *args)],
+                [
+                    str(q)
+                    for q in PythonHandler().with_shebang(
+                        venvstarter_script_filename, *args
+                    )
+                ],
                 stderr=subprocess.PIPE,
             )
             .strip()
@@ -319,7 +330,9 @@ def get_output(venvstarter_script_filename, *args):
         stde = ""
         if error.stderr:
             stde = error.stderr.decode()
-        assert False, f"Failed to run command ({venvstarter_script_filename}, {args}): {stde}"
+        assert (
+            False
+        ), f"Failed to run command ({venvstarter_script_filename}, {args}): {stde}"
     return output
 
 

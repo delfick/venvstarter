@@ -6,7 +6,9 @@ class ScriptNotFound(Exception):
 
     def __str__(self):
         available = ", ".join(
-            n.name for n in self.location.parent.iterdir() if "." not in n.name and n.exists()
+            n.name
+            for n in self.location.parent.iterdir()
+            if "." not in n.name and n.exists()
         )
         return "\n".join(
             [

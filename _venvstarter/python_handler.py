@@ -28,12 +28,12 @@ class Version:
         if isinstance(version, Version):
             version = str(version)
 
-        if isinstance(version, (int, float)):
+        if isinstance(version, int | float):
             version = str(version)
         elif hasattr(version, "version"):
             version = version.version
 
-        if isinstance(version, (list, tuple)):
+        if isinstance(version, list | tuple):
             while len(version) < 3:
                 version = (*version, 0)
             version = f"{version[0]}.{version[1]}.{version[2]}"
@@ -171,11 +171,16 @@ class PythonHandler:
             fle.close()
 
             question = [
-                str(q) for q in self.with_shebang(python_exe, fle.name, only_for_windows=True)
+                str(q)
+                for q in self.with_shebang(python_exe, fle.name, only_for_windows=True)
             ]
             if get_output:
                 return (
-                    (subprocess.check_output(question, **{"stderr": subprocess.PIPE, **kwargs}))
+                    (
+                        subprocess.check_output(
+                            question, **{"stderr": subprocess.PIPE, **kwargs}
+                        )
+                    )
                     .strip()
                     .decode()
                 )
@@ -197,7 +202,8 @@ class PythonHandler:
 
         try:
             version_info = self.get_output(
-                executable, 'print(__import__("json").dumps(list(__import__("sys").version_info)))'
+                executable,
+                'print(__import__("json").dumps(list(__import__("sys").version_info)))',
             )
         except errors.FailedToGetOutput:
             if raise_error:
@@ -225,19 +231,19 @@ class PythonHandler:
                 version = Version((version.major + 1, version.minor + 1))
 
         while version >= self.min_python:
-            yield "python{0}.{1}".format(*version.version)
+            yield f"python{version.version[0]}.{version.version[1]}"
 
             if version.version[1] == 0:
                 if version.version[0] == 0:
                     break
 
-                version = Version((version.major - 1))
+                version = Version(version.major - 1)
             else:
                 version = Version((version.major, version.minor - 1))
 
         version = starting
         while version >= self.min_python:
-            yield "python{0}".format(*version.version)
+            yield f"python{version.version[0]}"
 
             if version.version[0] <= 3:
                 break
@@ -254,10 +260,16 @@ class PythonHandler:
 
         max_python = self.min_python
         if self.max_python is None:
-            _, max_python_1 = self.version_for(shutil.which("python3"), without_patch=True)
-            _, max_python_2 = self.version_for(shutil.which("python"), without_patch=True)
+            _, max_python_1 = self.version_for(
+                shutil.which("python3"), without_patch=True
+            )
+            _, max_python_2 = self.version_for(
+                shutil.which("python"), without_patch=True
+            )
             found = [
-                m for m in (max_python_1, max_python_2) if m is not None and m > self.min_python
+                m
+                for m in (max_python_1, max_python_2)
+                if m is not None and m > self.min_python
             ]
             if len(found) > 1:
                 max_python = max([max_python_1, max_python_2])
@@ -269,7 +281,9 @@ class PythonHandler:
         tried = []
         for version in self.versions(max_python):
             tried.append(version)
-            executable, found = self.version_for(shutil.which(version), without_patch=True)
+            executable, found = self.version_for(
+                shutil.which(version), without_patch=True
+            )
             if self.suitable(found):
                 return executable
 

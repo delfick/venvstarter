@@ -3,9 +3,8 @@ import re
 import runpy
 from pathlib import Path
 
-from . import errors
+from . import errors, python_handler, starter
 from . import helpers as hp
-from . import python_handler, starter
 
 regexes = {
     "ascii": re.compile(r"([a-zA-Z]+(0-9)*)+"),
@@ -39,7 +38,9 @@ class manager:
         lives in.
         """
         if here is None:
-            here = Path(inspect.currentframe().f_back.f_code.co_filename).parent.absolute()
+            here = Path(
+                inspect.currentframe().f_back.f_code.co_filename
+            ).parent.absolute()
 
         self.here = here
         self.program = program
@@ -131,7 +132,10 @@ class manager:
         path = Path(
             *[
                 hp.do_format(
-                    part, here=str(self.here), home=str(home), venv_parent=str(self.venv_folder)
+                    part,
+                    here=str(self.here),
+                    home=str(home),
+                    venv_parent=str(self.venv_folder),
                 )
                 for part in parts
             ]
@@ -150,7 +154,9 @@ class manager:
 
         return self
 
-    def add_local_dep(self, *parts, editable=True, version_file=None, with_tests=False, name):
+    def add_local_dep(
+        self, *parts, editable=True, version_file=None, with_tests=False, name
+    ):
         """
         Adds a dependency that is local to your script. The path to where a
         folder where a ``setup.py`` can be found is provided as parts of a file
@@ -183,7 +189,10 @@ class manager:
         path = Path(
             *[
                 hp.do_format(
-                    part, here=str(self.here), home=str(home), venv_parent=str(self.venv_folder)
+                    part,
+                    here=str(self.here),
+                    home=str(home),
+                    venv_parent=str(self.venv_folder),
                 )
                 for part in parts
             ]
@@ -238,7 +247,9 @@ class manager:
         it uses ``.venv``.
         """
         if self._venv_folder_name is None:
-            if not isinstance(self.program, str) or not regexes["ascii"].match(self.program):
+            if not isinstance(self.program, str) or not regexes["ascii"].match(
+                self.program
+            ):
                 self._venv_folder_name = ".venv"
             else:
                 self._venv_folder_name = f".{self.program}"

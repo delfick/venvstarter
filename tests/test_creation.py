@@ -17,7 +17,9 @@ class TestFindingTheRightVersion:
 
         with pytest.helpers.PATH.configure(version, python="3.10", python3="3.10"):
             exe = pytest.helpers.pythons[version]
-            with pytest.helpers.make_script(script, exe=exe, prepare_venv=True) as filename:
+            with pytest.helpers.make_script(
+                script, exe=exe, prepare_venv=True
+            ) as filename:
                 pytest.helpers.assertPythonVersion(filename, str(version))
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
@@ -42,11 +44,15 @@ class TestFindingTheRightVersion:
         def script():
             __import__("venvstarter").manager("python").min_python(3.7).run()
 
-        with pytest.helpers.PATH.configure(3.7, 3.8, python3=3.7, python=3.7, mock_sys=3.7):
+        with pytest.helpers.PATH.configure(
+            3.7, 3.8, python3=3.7, python=3.7, mock_sys=3.7
+        ):
             with pytest.helpers.make_script(script, prepare_venv=True) as filename:
                 pytest.helpers.assertPythonVersion(filename, "3.7")
 
-                with pytest.helpers.PATH.configure(3.7, 3.8, python3=3.8, python=3.8, mock_sys=3.8):
+                with pytest.helpers.PATH.configure(
+                    3.7, 3.8, python3=3.8, python=3.8, mock_sys=3.8
+                ):
                     pytest.helpers.write_script(script, filename=filename)
                     pytest.helpers.assertPythonVersion(filename, "3.7")
 
@@ -66,7 +72,9 @@ class TestFindingTheRightVersion:
                 else:
                     break_location(scripts_folder / "bin" / "python")
 
-                with pytest.helpers.PATH.configure(3.7, 3.8, python3=3.8, python=3.8, mock_sys=3.8):
+                with pytest.helpers.PATH.configure(
+                    3.7, 3.8, python3=3.8, python=3.8, mock_sys=3.8
+                ):
                     pytest.helpers.write_script(script, filename=filename)
                     pytest.helpers.assertPythonVersion(filename, "3.8")
 
@@ -74,7 +82,9 @@ class TestFindingTheRightVersion:
         def script():
             __import__("venvstarter").manager("python").min_python(3.7).run()
 
-        with pytest.helpers.PATH.configure(3.7, 3.8, python3=3.7, python=3.7, mock_sys=3.7):
+        with pytest.helpers.PATH.configure(
+            3.7, 3.8, python3=3.7, python=3.7, mock_sys=3.7
+        ):
             with pytest.helpers.make_script(script, prepare_venv=True) as filename:
                 pytest.helpers.assertPythonVersion(filename, "3.7")
 
@@ -84,7 +94,9 @@ class TestFindingTheRightVersion:
                     pytest.helpers.assertPythonVersion(filename, "3.7")
 
                     def script():
-                        __import__("venvstarter").manager("python").min_python(3.8).run()
+                        __import__("venvstarter").manager("python").min_python(
+                            3.8
+                        ).run()
 
                     pytest.helpers.write_script(script, filename=filename)
                     pytest.helpers.assertPythonVersion(filename, "3.9")

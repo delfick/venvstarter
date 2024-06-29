@@ -1,6 +1,11 @@
 Changelog
 ---------
 
+.. _release-0.13.0:
+
+0.13.0 - TBD
+    * Now formatting and linting with ruff
+
 .. _release-0.12.2:
 
 0.12.2 - 9 March 2024
