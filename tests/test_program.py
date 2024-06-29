@@ -1,5 +1,3 @@
-# coding: spec
-
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -65,11 +63,9 @@ def entry_point(script):
             yield filename
 
 
-describe "Different programs":
-
+class TestDifferentPrograms:
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    it "can be None", version:
-
+    def test_can_be_None(self, version: str | float) -> None:
         def script():
             return __import__("venvstarter").manager(None)
 
@@ -82,8 +78,7 @@ describe "Different programs":
             assert output == "THINGY one two"
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    it "can be an entry point", version:
-
+    def test_can_be_an_entry_point(self, version: str | float) -> None:
         def script():
             return __import__("venvstarter").manager("thing")
 
@@ -92,8 +87,7 @@ describe "Different programs":
             assert output[-1] == "THINGY one two"
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    it "can be a binary", version:
-
+    def test_can_be_a_binary(self, version: str | float) -> None:
         def script():
             return __import__("venvstarter").manager("python")
 
@@ -102,8 +96,7 @@ describe "Different programs":
             assert output[-1] == "I am a python"
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    it "can be a list", version:
-
+    def test_can_be_a_list(self, version: str | float) -> None:
         def script():
             return __import__("venvstarter").manager(["python", "-c"])
 
@@ -131,8 +124,7 @@ describe "Different programs":
                 assert output[-1] == '    print("this should be last!")'
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    it "can be a function that doesn't do anything", version:
-
+    def test_can_be_a_function_that_does_not_do_anything(self, version: str | float) -> None:
         def script():
             def runme(venv_location, args):
                 print(venv_location)
@@ -144,8 +136,7 @@ describe "Different programs":
             assert output[-1] == str(Path(filename).parent / ".venv")
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    it "can be a function that returns a path to run", version:
-
+    def test_can_be_a_function_that_returns_a_path_to_run(self, version: str | float) -> None:
         def script():
             def runme(venv_location, args):
                 return "python"

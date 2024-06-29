@@ -1,9 +1,8 @@
-# coding: spec
-
 from venvstarter import Version
 
-describe "Version":
-    it "can create from different values":
+
+class TestVersion:
+    def test_can_create_from_different_values(self) -> None:
         assert Version(3).version == (3, 0, 0)
         assert Version(3.7).version == (3, 7, 0)
         assert Version(3.78).version == (3, 78, 0)
@@ -17,7 +16,7 @@ describe "Version":
         assert Version((3, 7)).version == (3, 7, 0)
         assert Version((3, 7, 3)).version == (3, 7, 3)
 
-    it "can be made to ignore the patch":
+    def test_can_be_made_to_ignore_the_patch(self) -> None:
         assert Version(3, without_patch=True).version == (3, 0, 0)
         assert Version(3.7, without_patch=True).version == (3, 7, 0)
         assert Version(3.79, without_patch=True).version == (3, 79, 0)
@@ -31,19 +30,19 @@ describe "Version":
         assert Version((3, 7), without_patch=True).version == (3, 7, 0)
         assert Version((3, 7, 3), without_patch=True).version == (3, 7, 0)
 
-    it "can be turned into a string":
+    def test_can_be_turned_into_a_string(self) -> None:
         assert str(Version(3)) == "3.0.0"
         assert str(Version("3.7")) == "3.7.0"
         assert str(Version("3.7.30")) == "3.7.30"
         assert str(Version("3.7.30", without_patch=True)) == "3.7.0"
 
-    it "can be turned into a repr":
+    def test_can_be_turned_into_a_repr(self) -> None:
         assert repr(Version(3)) == "<Version 3.0.0>"
         assert repr(Version("3.7")) == "<Version 3.7.0>"
         assert repr(Version("3.7.30")) == "<Version 3.7.30>"
         assert repr(Version("3.7.30", without_patch=True)) == "<Version 3.7.0>"
 
-    it "can be compared":
+    def test_can_be_compared(self) -> None:
         v3 = Version(3)
         v35 = Version("3.5")
         v35_2 = Version("3.5.2")

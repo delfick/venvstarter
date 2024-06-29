@@ -1,5 +1,3 @@
-# coding: spec
-
 import json
 import os
 import time
@@ -9,9 +7,9 @@ import pytest
 
 pytestmark = pytest.mark.usage_tests
 
-describe "Finding the right version":
 
-    it "can be used to read a requirements.txt":
+class TestFindingTheRightVersion:
+    def test_can_be_used_to_read_a_requirements_txt(self) -> None:
         with pytest.helpers.directory_creator() as creator:
 
             creator.add(
@@ -37,7 +35,7 @@ describe "Finding the right version":
             ).split("\n")
             assert output[-1] == "yay"
 
-    it "can be used to symlink install and run a local package":
+    def test_can_be_used_to_symlink_install_and_run_a_local_package(self) -> None:
         with pytest.helpers.directory_creator() as creator:
 
             creator.add(
@@ -151,8 +149,7 @@ describe "Finding the right version":
 
                 assert diff1 - diff2 > 0.5
 
-    it "can be used to add a pypi dep":
-
+    def test_can_be_used_to_add_a_pypi_dep(self) -> None:
         def script():
             __import__("venvstarter").manager("python").add_pypi_deps(
                 "dict2xml", "alt-pytest-asyncio==0.7.2"
@@ -166,8 +163,7 @@ describe "Finding the right version":
             ).split("\n")
             assert output[-1] == "yay"
 
-    it "can be used to make sure a dependency isn't binary":
-
+    def test_can_be_used_to_make_sure_a_dependency_is_not_binary(self) -> None:
         def script():
             __import__("venvstarter").manager("python").add_pypi_deps("noseOfYeti[black]").run()
 
@@ -190,8 +186,7 @@ describe "Finding the right version":
             ).split("\n")
             assert not output[-1].endswith(".so")
 
-    it "can be used to add environment variables":
-
+    def test_can_be_used_to_add_environment_variables(self) -> None:
         def script():
             __import__("venvstarter").manager("python").add_env(
                 ONE="1",

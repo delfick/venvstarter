@@ -1,5 +1,3 @@
-# coding: spec
-
 import os
 
 import pytest
@@ -8,11 +6,12 @@ from venvstarter import Version
 
 pytestmark = pytest.mark.creation_tests
 
-describe "Finding the right version":
 
+class TestFindingTheRightVersion:
     @pytest.mark.parametrize("version", [3.8, 3.9, "3.10", "3.11"])
-    it "will always use current version if no max is specified", version:
-
+    def test_will_always_use_current_version_if_no_max_is_specified(
+        self, version: str | float
+    ) -> None:
         def script():
             __import__("venvstarter").manager("python").min_python("3.7").run()
 
@@ -22,8 +21,9 @@ describe "Finding the right version":
                 pytest.helpers.assertPythonVersion(filename, str(version))
 
     @pytest.mark.parametrize("version", [3.7, 3.8, 3.9, "3.10", "3.11"])
-    it "will use the only version available if within min and max", version:
-
+    def test_will_use_only_version_available_if_within_min_and_max(
+        self, version: str | float
+    ) -> None:
         def script(version):
             __import__("venvstarter").manager("python").min_python(version).run()
 
@@ -36,8 +36,9 @@ describe "Finding the right version":
                     ) as filename:
                         pytest.helpers.assertPythonVersion(filename, str(use))
 
-    it "can force the virtualenv to get a new version if the current python doesn't exist":
-
+    def test_can_force_the_virtual_env_to_get_a_new_version_if_the_current_python_does_not_exist(
+        self,
+    ) -> None:
         def script():
             __import__("venvstarter").manager("python").min_python(3.7).run()
 
@@ -69,8 +70,7 @@ describe "Finding the right version":
                     pytest.helpers.write_script(script, filename=filename)
                     pytest.helpers.assertPythonVersion(filename, "3.8")
 
-    it "can force the virtualenv to get a new version":
-
+    def test_can_force_the_virtualenv_to_get_a_new_version(self) -> None:
         def script():
             __import__("venvstarter").manager("python").min_python(3.7).run()
 

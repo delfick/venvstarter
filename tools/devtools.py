@@ -73,7 +73,7 @@ class App:
     def tests(self, bin_dir, args):
         if "-q" not in args:
             args = ["-q", *args]
-        run(bin_dir / "pytest", *args, _env={"NOSE_OF_YETI_BLACK_COMPAT": "false"})
+        run(bin_dir / "pytest", *args)
 
     @command
     def tox(self, bin_dir, args):
