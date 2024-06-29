@@ -6,15 +6,27 @@ if [ -z "$VENVSTARTER_PROJECT_ROOT" ]; then
 fi
 
 TOOLS="$VENVSTARTER_PROJECT_ROOT/tools"
+
 if [ ! -d "$TOOLS/deps/uv-venv" ]; then
     if ! "$TOOLS/bootstrap_uv.sh" --version; then
         echo "Failed to bootstrap uv"
     fi
 fi
 
+if [ ! -f "$TOOLS/deps/venvstarter/bootstrap.py" ]; then
+    rm -f "$TOOLS/deps/venvstarter*"
+fi
+
+if [ ! -f "$TOOLS/deps/venvstarter/bootstrap.py" ]; then
+    if ! "$TOOLS/bootstrap_uv.sh" pip install -t "$TOOLS/deps"; then
+        echo "Failed to ensure we have venvstarter"
+        exit 1
+    fi
+fi
+
 "$TOOLS/deps/uv-venv/bin/python" "$TOOLS/../venvstarter/bootstrap.py" \
     --venvstarter-python ">=3.10" \
-    --venvstarter-version "-e ." \
+    --venvstarter-version "venvstarter>=0.13.0" \
     --venvstarter-manager "./tools/manager.py" \
     --venvstarter-uv "./tools/bootstrap_uv.sh" \
     --venvstarter-manual-marker "./tools/__manual_virtualenv__" \

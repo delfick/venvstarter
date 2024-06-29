@@ -1,4 +1,5 @@
 *.pyc
+.venv/
 .dmypy.json
 __pycache__/
 *.egg-info/
