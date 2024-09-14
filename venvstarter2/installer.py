@@ -60,10 +60,13 @@ class Installer:
             original_dep = dep
             name = None
 
-            if "@" in dep:
-                name, dep = dep.split("@")
+            if dep.count("@") == 1:
+                name, dep = dep.split("@", 1)
                 name = name.strip()
                 dep = dep.strip()
+            elif dep.count("@") == 2:
+                name, _ = dep.split("@", 1)
+                name = name.strip()
 
             if "#" in dep:
                 if "egg" in dep:

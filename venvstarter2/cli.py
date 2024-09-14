@@ -69,7 +69,9 @@ class Command:
             default=pathlib.Path(sys.executable),
             type=pathlib.Path,
         )
-        args, _ = parser.parse_known_args(argv)
+        args, _ = parser.parse_known_args(
+            [a for a in (argv or sys.argv[1:]) if a not in ("-h", "--help")]
+        )
         return cls(
             register=register,
             project_root=args.venvstarter_project_root,
@@ -94,7 +96,10 @@ class Command:
     def path_for(self, name: str) -> str:
         location = self.bin_dir / name
         if not location.exists():
-            raise sys.exit(f"!!! No executable found: {location}")
+            if os.name == "nt":
+                location = location.with_suffix(".exe")
+            if not location.exists():
+                raise sys.exit(f"!!! No executable found: {location}")
         return str(location)
 
     def run_pip(self, *args: str) -> None:

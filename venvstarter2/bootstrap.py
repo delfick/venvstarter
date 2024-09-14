@@ -1,7 +1,6 @@
 import argparse
 import os
 import pathlib
-import shlex
 import shutil
 import subprocess
 import sys
@@ -175,7 +174,6 @@ class Bootstrap:
         self,
         project_root,
         python_version,
-        version,
         deps_manager,
         tools_manager,
         uv,
@@ -186,11 +184,10 @@ class Bootstrap:
         venv_only,
         manual_marker=None,
     ):
-        # type: (pathlib.Path, str, str, pathlib.Path | None, pathlib.Path | None, pathlib.Path, list[str], pathlib.Path, pathlib.Path | None, pathlib.Path | None, bool, pathlib.Path | None) -> None
+        # type: (pathlib.Path, str, pathlib.Path | None, pathlib.Path | None, pathlib.Path, list[str], pathlib.Path, pathlib.Path | None, pathlib.Path | None, bool, pathlib.Path | None) -> None
         self.uv = uv
         self.python_version = python_version
         self.venv_only = venv_only
-        self.version = version
         self.deps_manager = deps_manager
         self.tools_manager = tools_manager
         self.project_root = project_root
@@ -245,37 +242,6 @@ class Bootstrap:
             else:
                 python = found
 
-        ensure_venvstarter = True
-        if self.version.startswith("-e"):
-            try:
-                process = subprocess.run(
-                    [self.uv, "pip", "freeze", "-p", str(python)],
-                    check=True,
-                    capture_output=True,
-                )
-            except subprocess.CalledProcessError:
-                pass
-            else:
-                if any(
-                    line.startswith(self.version.encode())
-                    for line in process.stdout.split(b"\n")
-                ):
-                    ensure_venvstarter = False
-
-        if ensure_venvstarter:
-            subprocess.run(
-                [
-                    self.uv,
-                    "pip",
-                    "install",
-                    *shlex.split(self.version),
-                    "-p",
-                    str(python),
-                ],
-                check=True,
-                cwd=self.project_root,
-            )
-
         env = {**os.environ, "VENVSTARTER_UV": str(self.uv)}
 
         # Fix a bug whereby the virtualenv has the wrong sys.executable
@@ -285,7 +251,10 @@ class Bootstrap:
         if self.deps_manager:
             install_deps = True
             if self.manual_marker is not None and self.manual_marker.exists():
-                if pathlib.Path(self.manual_marker.read_text().strip()) == previous_manual_venv:
+                if (
+                    pathlib.Path(self.manual_marker.read_text().strip())
+                    == previous_manual_venv
+                ):
                     install_deps = False
                 else:
                     print(
@@ -305,9 +274,15 @@ class Bootstrap:
                     install_deps = answer == "y"
 
             if install_deps or "--venvstarter-force-deps" in self.program_args:
+                manage_deps = [
+                    a for a in self.program_args if a not in ("-h", "--help")
+                ]
+                if "--venvstarter-python-path" not in self.program_args:
+                    manage_deps.extend(["--venvstarter-python-path", str(python)])
+
                 try:
                     subprocess.run(
-                        [str(python), str(self.deps_manager), *self.program_args],
+                        [sys.executable, str(self.deps_manager), *manage_deps],
                         env=env,
                         check=True,
                     )
@@ -388,7 +363,7 @@ class Bootstrap:
 
         if not self.venv_location.exists():
             subprocess.run(
-                [self.uv, "venv", str(self.venv_location), "-p", str(python)],
+                [str(self.uv), "venv", str(self.venv_location), "-p", str(python)],
                 check=True,
             )
             python = python_from(self.venv_location)
@@ -435,7 +410,9 @@ class Bootstrap:
         else:
             while True:
                 try:
-                    provided = pathlib.Path(input("Enter path to virtualenv to use: ").strip())
+                    provided = pathlib.Path(
+                        input("Enter path to virtualenv to use: ").strip()
+                    )
                 except (EOFError, KeyboardInterrupt):
                     sys.exit(1)
                 if not provided.exists():
@@ -482,7 +459,6 @@ class Bootstrap:
 def make_parser(
     default_project_root,
     default_python=">=3.10",
-    default_venvstarter=">=0.13.0",
     default_deps_manager=None,
     default_tools_manager=None,
     default_uv=pathlib.Path("./bootstrap_uv.sh"),
@@ -493,7 +469,7 @@ def make_parser(
     default_get_activate_script=None,
     default_assume_correct_deps=False,
 ):
-    # type: (pathlib.Path, str, str, pathlib.Path | None, pathlib.Path | None, pathlib.Path, pathlib.Path, bool, pathlib.Path | None, pathlib.Path | None, pathlib.Path | None, bool) -> argparse.ArgumentParser
+    # type: (pathlib.Path, str, pathlib.Path | None, pathlib.Path | None, pathlib.Path, pathlib.Path, bool, pathlib.Path | None, pathlib.Path | None, pathlib.Path | None, bool) -> argparse.ArgumentParser
 
     parser = argparse.ArgumentParser()
 
@@ -501,11 +477,6 @@ def make_parser(
         "--venvstarter-python",
         default=default_python,
         help="The python range acceptable for this environment",
-    )
-    parser.add_argument(
-        "--venvstarter-version",
-        default=default_venvstarter,
-        help="The version range for venvstarter acceptable for this environment",
     )
     parser.add_argument(
         "--venvstarter-deps-manager",
@@ -591,7 +562,9 @@ def main(argv=None):
         program_args = argv[double_dash + 1 :]
 
     parser = make_parser(
-        default_project_root=pathlib.Path(os.environ["VENVSTARTER_PROJECT_ROOT"].strip())
+        default_project_root=pathlib.Path(
+            os.environ["VENVSTARTER_PROJECT_ROOT"].strip()
+        )
     )
     args = parser.parse_args(venvstarter_args)
 
@@ -610,7 +583,6 @@ def main(argv=None):
             default_project_root=args.venvstarter_project_root,
             default_original_venv=args.venvstarter_original_venv,
             default_python=args.venvstarter_python,
-            default_venvstarter=args.venvstarter_version,
             default_deps_manager=args.venvstarter_deps_manager,
             default_tools_manager=args.venvstarter_tools_manager,
             default_uv=args.venvstarter_uv,
@@ -631,7 +603,6 @@ def main(argv=None):
     Bootstrap(
         project_root=project_root,
         python_version=args.venvstarter_python,
-        version=args.venvstarter_version,
         deps_manager=(
             project_root / args.venvstarter_deps_manager
             if args.venvstarter_deps_manager
