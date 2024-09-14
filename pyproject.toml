@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "venvstarter"
+name = "venvstarter2"
 dynamic = ["version"]
 description = "Tool to create virtualenvs, manage versions of packages in it and use it start a particular program"
 readme = "README.rst"
@@ -32,21 +32,21 @@ dev = [
 Homepage = "https://github.com/delfick/venvstarter"
 
 [tool.hatch.version]
-path = "venvstarter/version.py"
+path = "venvstarter2/version.py"
 
 [tool.hatch.build]
 include = [
-    "/venvstarter"
+    "/venvstarter2"
 ]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/venvstarter",
+    "/venvstarter2",
 ]
 
 [tool.hatch.build.targets.wheel]
 include = [
-    "/venvstarter",
+    "/venvstarter2",
 ]
 
 [tool.ruff]
